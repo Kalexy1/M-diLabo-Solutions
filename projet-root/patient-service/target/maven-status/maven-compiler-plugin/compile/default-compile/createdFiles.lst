@@ -1,0 +1,5 @@
+com\medilabo\patientservice\controller\PatientController.class
+com\medilabo\patientservice\repository\PatientRepository.class
+com\medilabo\patientservice\config\SecurityConfig.class
+com\medilabo\patientservice\model\Patient.class
+com\medilabo\patientservice\PatientServiceApplication.class
