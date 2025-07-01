@@ -1,0 +1,4 @@
+com\medilabo\noteservice\repository\NoteRepository.class
+com\medilabo\noteservice\NoteServiceApplication.class
+com\medilabo\noteservice\controller\NoteController.class
+com\medilabo\noteservice\model\Note.class
