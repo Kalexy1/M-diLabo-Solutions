@@ -1,78 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">gateway-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.gatewayservice.config</a> &gt; <span class="el_source">SecurityConfig.java</span></div><h1>SecurityConfig.java</h1><pre class="source lang-java linenums">package com.medilabo.gatewayservice.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
 import java.net.URI;
 
 /**
- * Application: com.medilabo.gatewayservice.config
+ * Configuration de la sécurité pour le microservice {@code gateway-service}.
+ *
  * &lt;p&gt;
- * Classe &lt;strong&gt;SecurityConfig&lt;/strong&gt;.
- * &lt;br/&gt;
- * Rôle : Configure la sécurité (Spring Security WebFlux) du Gateway.
+ * Ce gateway agit comme proxy sécurisé devant les autres microservices.  
+ * Il valide les JWT signés émis par l’{@code auth-service} et applique les
+ * règles d’accès en fonction des rôles contenus dans les jetons.
  * &lt;/p&gt;
  *
- * &lt;h3&gt;Principes&lt;/h3&gt;
+ * &lt;h3&gt;Fonctionnalités principales&lt;/h3&gt;
  * &lt;ul&gt;
- *   &lt;li&gt;Le Gateway ne gère &lt;em&gt;pas&lt;/em&gt; de formulaire de login : la route &lt;code&gt;/auth/**&lt;/code&gt;
- *       (gérée par &lt;em&gt;auth-service&lt;/em&gt;) est responsable de l’authentification.&lt;/li&gt;
- *   &lt;li&gt;Les accès aux routes sont filtrés au bord (roles/permissions) avant de proxyfier les appels.&lt;/li&gt;
- *   &lt;li&gt;CSRF est désactivé : le Gateway ne rend pas de pages ni de formulaires côté serveur.&lt;/li&gt;
- *   &lt;li&gt;Non authentifié → redirection 303 vers &lt;code&gt;/auth/login&lt;/code&gt;.&lt;/li&gt;
- *   &lt;li&gt;Accès refusé (rôle insuffisant) → redirection 303 vers &lt;code&gt;/access-denied&lt;/code&gt;.&lt;/li&gt;
+ *   &lt;li&gt;Validation des jetons JWT (algorithme HS256) avec la clé secrète partagée
+ *       définie par la variable d’environnement {@code JWT_SECRET}.&lt;/li&gt;
+ *   &lt;li&gt;Application de règles de sécurité par rôle :
+ *     &lt;ul&gt;
+ *       &lt;li&gt;{@code /auth/**}, {@code /access-denied} : accès public.&lt;/li&gt;
+ *       &lt;li&gt;{@code /ui/**}, {@code /patients/**} : accès réservé aux rôles {@code ORGANISATEUR} ou {@code PRATICIEN}.&lt;/li&gt;
+ *       &lt;li&gt;{@code /notes/**}, {@code /risk/**} : accès réservé au rôle {@code PRATICIEN}.&lt;/li&gt;
+ *       &lt;li&gt;Toutes les autres routes : authentification requise.&lt;/li&gt;
+ *     &lt;/ul&gt;
+ *   &lt;/li&gt;
+ *   &lt;li&gt;Redirection vers {@code /auth/login} si l’utilisateur n’est pas authentifié.&lt;/li&gt;
+ *   &lt;li&gt;Redirection vers {@code /access-denied} si l’utilisateur est authentifié
+ *       mais ne possède pas les rôles requis.&lt;/li&gt;
+ *   &lt;li&gt;Désactivation du CSRF (le gateway ne sert pas de formulaires).&lt;/li&gt;
  * &lt;/ul&gt;
  */
 @Configuration
-<span class="fc" id="L30">public class SecurityConfig {</span>
+<span class="fc" id="L42">public class SecurityConfig {</span>
 
     /**
-     * Chaîne de filtres de sécurité pour Spring Cloud Gateway.
+     * Définit la chaîne de filtres de sécurité pour Spring Security WebFlux.
      *
-     * &lt;p&gt;&lt;strong&gt;Règles d’autorisation :&lt;/strong&gt;&lt;/p&gt;
-     * &lt;ul&gt;
-     *   &lt;li&gt;&lt;code&gt;/auth/**&lt;/code&gt; et &lt;code&gt;/access-denied&lt;/code&gt; : accès public.&lt;/li&gt;
-     *   &lt;li&gt;&lt;code&gt;/ui/**&lt;/code&gt; et &lt;code&gt;/patients/**&lt;/code&gt; : rôles &lt;code&gt;ORGANISATEUR&lt;/code&gt; ou &lt;code&gt;PRATICIEN&lt;/code&gt;.&lt;/li&gt;
-     *   &lt;li&gt;&lt;code&gt;/notes/**&lt;/code&gt; et &lt;code&gt;/risk/**&lt;/code&gt; : rôle &lt;code&gt;PRATICIEN&lt;/code&gt; uniquement.&lt;/li&gt;
-     *   &lt;li&gt;toute autre route : authentification requise.&lt;/li&gt;
-     * &lt;/ul&gt;
-     *
-     * &lt;p&gt;&lt;strong&gt;Gestion des erreurs :&lt;/strong&gt;&lt;/p&gt;
-     * &lt;ul&gt;
-     *   &lt;li&gt;Non authentifié : redirection 303 → &lt;code&gt;/auth/login&lt;/code&gt;.&lt;/li&gt;
-     *   &lt;li&gt;Accès refusé : redirection 303 → &lt;code&gt;/access-denied&lt;/code&gt;.&lt;/li&gt;
-     * &lt;/ul&gt;
-     *
-     * @param http l’API de configuration de la sécurité WebFlux
-     * @return la chaîne de filtres de sécurité
+     * @param http l’API de configuration de la sécurité réactive
+     * @return la configuration complète du filtre de sécurité
      */
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
-<span class="fc" id="L54">        return http</span>
-<span class="fc" id="L55">            .authorizeExchange(exchanges -&gt; exchanges</span>
-<span class="fc" id="L56">                .pathMatchers(&quot;/auth/**&quot;, &quot;/access-denied&quot;).permitAll()</span>
-<span class="fc" id="L57">                .pathMatchers(&quot;/ui/**&quot;, &quot;/patients/**&quot;).hasAnyRole(&quot;ORGANISATEUR&quot;, &quot;PRATICIEN&quot;)</span>
-<span class="fc" id="L58">                .pathMatchers(&quot;/notes/**&quot;, &quot;/risk/**&quot;).hasRole(&quot;PRATICIEN&quot;)</span>
-<span class="fc" id="L59">                .anyExchange().authenticated()</span>
+<span class="fc" id="L52">        return http</span>
+<span class="fc" id="L53">            .authorizeExchange(ex -&gt; ex</span>
+<span class="fc" id="L54">                .pathMatchers(&quot;/auth/**&quot;, &quot;/access-denied&quot;).permitAll()</span>
+<span class="fc" id="L55">                .pathMatchers(&quot;/ui/**&quot;, &quot;/patients/**&quot;).hasAnyRole(&quot;ORGANISATEUR&quot;, &quot;PRATICIEN&quot;)</span>
+<span class="fc" id="L56">                .pathMatchers(&quot;/notes/**&quot;, &quot;/risk/**&quot;).hasRole(&quot;PRATICIEN&quot;)</span>
+<span class="fc" id="L57">                .anyExchange().authenticated()</span>
             )
-<span class="fc" id="L61">            .exceptionHandling(e -&gt; e</span>
-<span class="fc" id="L62">                .authenticationEntryPoint((exchange, ex) -&gt; {</span>
-<span class="fc" id="L63">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
-<span class="fc" id="L64">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/auth/login&quot;));</span>
-<span class="fc" id="L65">                    return exchange.getResponse().setComplete();</span>
+<span class="fc" id="L59">            .oauth2ResourceServer(oauth -&gt; oauth.jwt(jwt -&gt; jwt.jwtAuthenticationConverter(ctx -&gt; {</span>
+<span class="nc" id="L60">                var roles = (java.util.List&lt;String&gt;) ctx.getClaims().getOrDefault(&quot;roles&quot;, java.util.List.of());</span>
+<span class="nc" id="L61">                var auths = roles.stream()</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">                        .map(r -&gt; r.startsWith(&quot;ROLE_&quot;) ? r : &quot;ROLE_&quot; + r)</span>
+<span class="nc" id="L63">                        .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)</span>
+<span class="nc" id="L64">                        .toList();</span>
+<span class="nc" id="L65">                return reactor.core.publisher.Mono.just(</span>
+<span class="nc" id="L66">                        new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(</span>
+<span class="nc" id="L67">                                ctx.getSubject(), &quot;n/a&quot;, auths));</span>
+<span class="fc" id="L68">            })))</span>
+<span class="fc" id="L69">            .exceptionHandling(e -&gt; e</span>
+<span class="fc" id="L70">                .authenticationEntryPoint((exchange, ex) -&gt; {</span>
+<span class="fc" id="L71">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
+<span class="fc" id="L72">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/auth/login&quot;));</span>
+<span class="fc" id="L73">                    return exchange.getResponse().setComplete();</span>
                 })
-<span class="fc" id="L67">                .accessDeniedHandler((exchange, denied) -&gt; {</span>
-<span class="fc" id="L68">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
-<span class="fc" id="L69">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/access-denied&quot;));</span>
-<span class="fc" id="L70">                    return exchange.getResponse().setComplete();</span>
-<span class="fc" id="L71">                })</span>
+<span class="fc" id="L75">                .accessDeniedHandler((exchange, denied) -&gt; {</span>
+<span class="fc" id="L76">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
+<span class="fc" id="L77">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/access-denied&quot;));</span>
+<span class="fc" id="L78">                    return exchange.getResponse().setComplete();</span>
+<span class="fc" id="L79">                })</span>
             )
-<span class="fc" id="L73">            .csrf(ServerHttpSecurity.CsrfSpec::disable)</span>
+<span class="fc" id="L81">            .csrf(ServerHttpSecurity.CsrfSpec::disable)</span>
+<span class="fc" id="L82">            .build();</span>
+    }
 
-<span class="fc" id="L75">            .build();</span>
+    /**
+     * Déclare un décodeur de jetons JWT pour l’algorithme HS256.
+     *
+     * &lt;p&gt;
+     * Le décodeur est basé sur la clé secrète définie par la propriété
+     * {@code JWT_SECRET}. Cette clé doit être identique à celle utilisée
+     * par l’{@code auth-service} pour émettre les jetons.
+     * &lt;/p&gt;
+     *
+     * @param secret la clé secrète injectée depuis {@code JWT_SECRET}
+     * @return un décodeur JWT réactif basé sur HS256
+     */
+    @Bean
+    public ReactiveJwtDecoder jwtDecoder(@Value(&quot;${JWT_SECRET}&quot;) String secret) {
+<span class="fc" id="L99">        return NimbusReactiveJwtDecoder.withSecretKey(</span>
+<span class="fc" id="L100">                new javax.crypto.spec.SecretKeySpec(secret.getBytes(), &quot;HmacSHA256&quot;)).build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

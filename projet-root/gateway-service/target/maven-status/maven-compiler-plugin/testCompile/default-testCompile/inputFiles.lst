@@ -1,2 +1,3 @@
 D:\Formation OpenClassrooms\projet 9\projet-root\gateway-service\src\test\java\com\medilabo\gatewayservice\config\SecurityConfigTest.java
 D:\Formation OpenClassrooms\projet 9\projet-root\gateway-service\src\test\java\com\medilabo\gatewayservice\GatewayServiceApplicationTests.java
+D:\Formation OpenClassrooms\projet 9\projet-root\gateway-service\src\test\java\com\medilabo\gatewayservice\security\CookieToAuthHeaderFilterTest.java

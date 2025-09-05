@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CookieToAuthHeaderFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">gateway-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.gatewayservice.security</a> &gt; <span class="el_source">CookieToAuthHeaderFilter.java</span></div><h1>CookieToAuthHeaderFilter.java</h1><pre class="source lang-java linenums">package com.medilabo.gatewayservice.security;
+
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Mono;
+
+/**
+ * &lt;strong&gt;CookieToAuthHeaderFilter&lt;/strong&gt;
+ * &lt;p&gt;
+ * Ce filtre Spring WebFlux est appliqué au niveau du Gateway.
+ * Il intercepte les requêtes entrantes et, si un cookie {@code ACCESS_TOKEN} est présent,
+ * il le transforme en en-tête HTTP {@code Authorization} avec le préfixe {@code Bearer }.
+ * &lt;/p&gt;
+ *
+ * &lt;h3&gt;Règles de fonctionnement&lt;/h3&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;Si l’en-tête {@code Authorization} est déjà présent → ne fait rien.&lt;/li&gt;
+ *   &lt;li&gt;Si le cookie {@code ACCESS_TOKEN} est absent ou vide → ne fait rien.&lt;/li&gt;
+ *   &lt;li&gt;Sinon → ajoute un en-tête {@code Authorization: Bearer &amp;lt;token&amp;gt;} à la requête.&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * &lt;h3&gt;Utilité&lt;/h3&gt;
+ * &lt;p&gt;
+ * Permet d’utiliser un JWT stocké dans un cookie HttpOnly (posé par l’auth-service après login),
+ * tout en respectant les attentes de Spring Security qui lit le token dans le header.
+ * &lt;/p&gt;
+ */
+@Component
+<span class="fc" id="L32">public class CookieToAuthHeaderFilter implements WebFilter {</span>
+
+    /** Nom du cookie contenant le JWT. */
+    public static final String COOKIE_NAME = &quot;ACCESS_TOKEN&quot;;
+
+    /** Nom de l'en-tête standard d'authentification HTTP. */
+    private static final String AUTH_HEADER = &quot;Authorization&quot;;
+
+    /** Préfixe attendu par la spec OAuth2 / Bearer Token. */
+    private static final String BEARER_PREFIX = &quot;Bearer &quot;;
+
+    /**
+     * Filtre chaque requête entrante et ajoute un en-tête {@code Authorization}
+     * si un cookie {@code ACCESS_TOKEN} valide est trouvé.
+     *
+     * @param exchange le contexte d’échange HTTP (contient requête et réponse)
+     * @param chain la chaîne de filtres WebFlux
+     * @return un {@link Mono} complété après traitement de la requête
+     */
+    @Override
+    public Mono&lt;Void&gt; filter(ServerWebExchange exchange, WebFilterChain chain) {
+<span class="fc bfc" id="L53" title="All 2 branches covered.">        if (exchange.getRequest().getHeaders().containsKey(AUTH_HEADER)) {</span>
+<span class="fc" id="L54">            return chain.filter(exchange);</span>
+        }
+
+<span class="fc" id="L57">        var cookie = exchange.getRequest().getCookies().getFirst(COOKIE_NAME);</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (cookie == null) {</span>
+<span class="fc" id="L59">            return chain.filter(exchange);</span>
+        }
+
+<span class="fc" id="L62">        String token = cookie.getValue();</span>
+<span class="pc bpc" id="L63" title="1 of 4 branches missed.">        if (token == null || token.isBlank()) {</span>
+<span class="fc" id="L64">            return chain.filter(exchange);</span>
+        }
+
+<span class="fc" id="L67">        ServerHttpRequest mutated = exchange.getRequest()</span>
+<span class="fc" id="L68">                .mutate()</span>
+<span class="fc" id="L69">                .header(AUTH_HEADER, BEARER_PREFIX + token)</span>
+<span class="fc" id="L70">                .build();</span>
+
+<span class="fc" id="L72">        return chain.filter(exchange.mutate().request(mutated).build());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
