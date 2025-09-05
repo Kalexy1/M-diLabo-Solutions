@@ -1,0 +1,8 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+risk-assessment-service,com.medilabo.riskassessment.config,RiskAssessmentServiceSecurityConfig,0,20,0,0,0,7,0,3,0,3
+risk-assessment-service,com.medilabo.riskassessment.dto,PatientDTO,23,33,0,0,12,12,6,6,6,6
+risk-assessment-service,com.medilabo.riskassessment.dto,NoteDTO,33,9,0,0,15,4,7,2,7,2
+risk-assessment-service,com.medilabo.riskassessment.dto,RiskAssessmentResponse,36,33,0,0,18,12,7,6,7,6
+risk-assessment-service,com.medilabo.riskassessment.controller,RiskAssessmentController,0,11,0,0,0,3,0,2,0,2
+risk-assessment-service,com.medilabo.riskassessment,RiskAssessmentServiceApplication,5,7,0,0,2,2,1,2,1,2
+risk-assessment-service,com.medilabo.riskassessment.service,RiskAssessmentService,0,262,0,32,0,50,0,22,0,6

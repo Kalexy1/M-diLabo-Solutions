@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RiskAssessmentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">risk-assessment-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.riskassessment.service</a> &gt; <span class="el_source">RiskAssessmentService.java</span></div><h1>RiskAssessmentService.java</h1><pre class="source lang-java linenums">package com.medilabo.riskassessment.service;
+
+import com.medilabo.riskassessment.dto.NoteDTO;
+import com.medilabo.riskassessment.dto.PatientDTO;
+import com.medilabo.riskassessment.dto.RiskAssessmentResponse;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.LocalDate;
+import java.time.Period;
+import java.util.List;
+
+/**
+ * Application: com.medilabo.riskassessment.service
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;RiskAssessmentService&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Porte la logique métier d’évaluation du risque de diabète pour un patient.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * Le calcul du risque s’appuie sur :
+ * &lt;ul&gt;
+ *   &lt;li&gt;les données démographiques du patient (âge, genre) issues de &lt;em&gt;patient-service&lt;/em&gt;,&lt;/li&gt;
+ *   &lt;li&gt;la présence de &lt;em&gt;termes déclencheurs&lt;/em&gt; dans ses notes issues de &lt;em&gt;note-service&lt;/em&gt;.&lt;/li&gt;
+ * &lt;/ul&gt;
+ * Les appels inter-services transitent par la &lt;strong&gt;Gateway&lt;/strong&gt; via un {@link RestTemplate}.
+ * &lt;/p&gt;
+ */
+@Service
+public class RiskAssessmentService {
+
+    private final RestTemplate restTemplate;
+
+    /**
+     * URL de l’API &lt;em&gt;patient-service&lt;/em&gt; exposée via la Gateway.
+     * &lt;p&gt;Format attendu&amp;nbsp;: {@code http://gateway-service:8080/patients/{id}}&lt;/p&gt;
+     */
+<span class="fc" id="L39">    private final String PATIENT_API = &quot;http://gateway-service:8080/patients/&quot;;</span>
+
+    /**
+     * URL de l’API &lt;em&gt;note-service&lt;/em&gt; exposée via la Gateway.
+     * &lt;p&gt;Format attendu&amp;nbsp;: {@code http://gateway-service:8080/notes/patient/{id}}&lt;/p&gt;
+     */
+<span class="fc" id="L45">    private final String NOTE_API = &quot;http://gateway-service:8080/notes/patient/&quot;;</span>
+
+    /**
+     * Liste des termes déclencheurs à rechercher dans les notes.
+     * &lt;p&gt;
+     * La recherche est réalisée de façon &lt;em&gt;insensible à la casse&lt;/em&gt; et
+     * compte une occurrence par terme présent dans la note (pas de dédoublonnage intra-note).
+     * &lt;/p&gt;
+     */
+<span class="fc" id="L54">    private final List&lt;String&gt; triggers = List.of(</span>
+<span class="fc" id="L55">        &quot;Hémoglobine A1C&quot;, &quot;Microalbumine&quot;, &quot;Taille&quot;, &quot;Poids&quot;,</span>
+<span class="fc" id="L56">        &quot;Fumeur&quot;, &quot;Fumeuse&quot;, &quot;Anormal&quot;, &quot;Cholestérol&quot;,</span>
+<span class="fc" id="L57">        &quot;Vertiges&quot;, &quot;Rechute&quot;, &quot;Réaction&quot;, &quot;Anticorps&quot;</span>
+    );
+
+    /**
+     * Constructeur avec injection de {@link RestTemplate}.
+     *
+     * @param restTemplate client HTTP utilisé pour interroger les autres microservices
+     */
+<span class="fc" id="L65">    public RiskAssessmentService(RestTemplate restTemplate) {</span>
+<span class="fc" id="L66">        this.restTemplate = restTemplate;</span>
+<span class="fc" id="L67">    }</span>
+
+    /**
+     * Évalue le niveau de risque de diabète d’un patient et retourne uniquement le libellé.
+     * &lt;p&gt;
+     * Étapes&amp;nbsp;:
+     * &lt;ol&gt;
+     *   &lt;li&gt;Récupération du patient ({@link PatientDTO}) via {@link #PATIENT_API}.&lt;/li&gt;
+     *   &lt;li&gt;Récupération des notes ({@link NoteDTO}[]) via {@link #NOTE_API}.&lt;/li&gt;
+     *   &lt;li&gt;Calcul de l’âge, comptage des déclencheurs, application des règles métier.&lt;/li&gt;
+     * &lt;/ol&gt;
+     * &lt;/p&gt;
+     *
+     * @param patientId identifiant du patient
+     * @return le niveau de risque parmi {@code &quot;None&quot;}, {@code &quot;Borderline&quot;},
+     *         {@code &quot;In Danger&quot;} ou {@code &quot;Early onset&quot;}
+     */
+    public String assessRisk(Long patientId) {
+<span class="fc" id="L85">        PatientDTO patient = restTemplate.getForObject(PATIENT_API + patientId, PatientDTO.class);</span>
+<span class="fc" id="L86">        NoteDTO[] notes = restTemplate.getForObject(NOTE_API + patientId, NoteDTO[].class);</span>
+
+<span class="fc" id="L88">        int age = calculateAge(patient.getDateNaissance());</span>
+<span class="fc" id="L89">        String genre = patient.getGenre();</span>
+<span class="fc" id="L90">        int triggerCount = countTriggerTerms(notes);</span>
+
+<span class="fc" id="L92">        return determineRiskLevel(age, genre, triggerCount);</span>
+    }
+
+    /**
+     * Calcule l'âge en années complètes à partir de la date de naissance.
+     *
+     * @param birthDate date de naissance
+     * @return âge du patient en années
+     */
+    private int calculateAge(LocalDate birthDate) {
+<span class="fc" id="L102">        return Period.between(birthDate, LocalDate.now()).getYears();</span>
+    }
+
+    /**
+     * Compte le nombre total de termes déclencheurs détectés dans l’ensemble des notes.
+     * &lt;p&gt;
+     * Règles&amp;nbsp;:
+     * &lt;ul&gt;
+     *   &lt;li&gt;Ignoré si la liste des notes est nulle.&lt;/li&gt;
+     *   &lt;li&gt;Comparaison insensible à la casse ({@code toLowerCase}).&lt;/li&gt;
+     *   &lt;li&gt;Chaque terme de {@link #triggers} présent dans le contenu incrémente le compteur d’1.&lt;/li&gt;
+     * &lt;/ul&gt;
+     * &lt;/p&gt;
+     *
+     * @param notes tableau de notes médicales (peut être {@code null})
+     * @return nombre de déclencheurs détectés
+     */
+    private int countTriggerTerms(NoteDTO[] notes) {
+<span class="fc" id="L120">        int count = 0;</span>
+<span class="fc bfc" id="L121" title="All 2 branches covered.">        if (notes != null) {</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">            for (NoteDTO note : notes) {</span>
+<span class="fc" id="L123">                String contenu = note.getContenu();</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">                if (contenu != null) {</span>
+<span class="fc" id="L125">                    String normalized = contenu.toLowerCase();</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">                    for (String trigger : triggers) {</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">                        if (normalized.contains(trigger.toLowerCase())) {</span>
+<span class="fc" id="L128">                            count++;</span>
+                        }
+                    }
+                }
+            }
+        }
+<span class="fc" id="L134">        return count;</span>
+    }
+
+    /**
+     * Applique les règles métier pour dériver le niveau de risque à partir de l’âge,
+     * du genre et du nombre de déclencheurs détectés.
+     * &lt;p&gt;
+     * Règles synthétiques&amp;nbsp;:
+     * &lt;ul&gt;
+     *   &lt;li&gt;Si aucun déclencheur&amp;nbsp;: {@code &quot;None&quot;}.&lt;/li&gt;
+     *   &lt;li&gt;Âge &amp;gt; 30 ans&amp;nbsp;:
+     *     &lt;ul&gt;
+     *       &lt;li&gt;≥ 8 → {@code &quot;Early onset&quot;}&lt;/li&gt;
+     *       &lt;li&gt;≥ 6 → {@code &quot;In Danger&quot;}&lt;/li&gt;
+     *       &lt;li&gt;≥ 2 → {@code &quot;Borderline&quot;}&lt;/li&gt;
+     *     &lt;/ul&gt;
+     *   &lt;/li&gt;
+     *   &lt;li&gt;Âge ≤ 30 ans&amp;nbsp;:
+     *     &lt;ul&gt;
+     *       &lt;li&gt;Homme ({@code &quot;M&quot;})&amp;nbsp;: ≥ 5 → {@code &quot;Early onset&quot;}, ≥ 3 → {@code &quot;In Danger&quot;}&lt;/li&gt;
+     *       &lt;li&gt;Femme ({@code &quot;F&quot;})&amp;nbsp;: ≥ 7 → {@code &quot;Early onset&quot;}, ≥ 4 → {@code &quot;In Danger&quot;}&lt;/li&gt;
+     *     &lt;/ul&gt;
+     *   &lt;/li&gt;
+     * &lt;/ul&gt;
+     * &lt;/p&gt;
+     *
+     * @param age          âge du patient
+     * @param genre        genre du patient ({@code &quot;M&quot;} ou {@code &quot;F&quot;})
+     * @param triggerCount nombre de déclencheurs
+     * @return le niveau de risque : {@code &quot;None&quot;}, {@code &quot;Borderline&quot;},
+     *         {@code &quot;In Danger&quot;} ou {@code &quot;Early onset&quot;}
+     */
+    private String determineRiskLevel(int age, String genre, int triggerCount) {
+<span class="fc bfc" id="L167" title="All 2 branches covered.">        if (triggerCount == 0) return &quot;None&quot;;</span>
+
+<span class="fc bfc" id="L169" title="All 2 branches covered.">        if (age &gt; 30) {</span>
+<span class="fc bfc" id="L170" title="All 2 branches covered.">            if (triggerCount &gt;= 8) return &quot;Early onset&quot;;</span>
+<span class="fc bfc" id="L171" title="All 2 branches covered.">            if (triggerCount &gt;= 6) return &quot;In Danger&quot;;</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">            if (triggerCount &gt;= 2) return &quot;Borderline&quot;;</span>
+        } else {
+<span class="fc bfc" id="L174" title="All 2 branches covered.">            if (&quot;M&quot;.equalsIgnoreCase(genre)) {</span>
+<span class="fc bfc" id="L175" title="All 2 branches covered.">                if (triggerCount &gt;= 5) return &quot;Early onset&quot;;</span>
+<span class="fc bfc" id="L176" title="All 2 branches covered.">                if (triggerCount &gt;= 3) return &quot;In Danger&quot;;</span>
+<span class="fc bfc" id="L177" title="All 2 branches covered.">            } else if (&quot;F&quot;.equalsIgnoreCase(genre)) {</span>
+<span class="fc bfc" id="L178" title="All 2 branches covered.">                if (triggerCount &gt;= 7) return &quot;Early onset&quot;;</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">                if (triggerCount &gt;= 4) return &quot;In Danger&quot;;</span>
+            }
+        }
+<span class="fc" id="L182">        return &quot;None&quot;;</span>
+    }
+
+    /**
+     * Évalue le risque de diabète d’un patient et retourne une réponse détaillée.
+     * &lt;p&gt;
+     * La réponse inclut&amp;nbsp;: l’identifiant, le prénom, le nom, l’âge calculé,
+     * et le niveau de risque évalué.
+     * &lt;/p&gt;
+     *
+     * @param patientId identifiant du patient
+     * @return un {@link RiskAssessmentResponse} complet
+     */
+    public RiskAssessmentResponse assessRiskDetailed(Long patientId) {
+<span class="fc" id="L196">        PatientDTO patient = restTemplate.getForObject(PATIENT_API + patientId, PatientDTO.class);</span>
+<span class="fc" id="L197">        NoteDTO[] notes = restTemplate.getForObject(NOTE_API + patientId, NoteDTO[].class);</span>
+
+<span class="fc" id="L199">        int age = calculateAge(patient.getDateNaissance());</span>
+<span class="fc" id="L200">        String genre = patient.getGenre();</span>
+<span class="fc" id="L201">        int triggerCount = countTriggerTerms(notes);</span>
+<span class="fc" id="L202">        String risk = determineRiskLevel(age, genre, triggerCount);</span>
+
+<span class="fc" id="L204">        return new RiskAssessmentResponse(</span>
+<span class="fc" id="L205">            patient.getId(),</span>
+<span class="fc" id="L206">            patient.getPrenom(),</span>
+<span class="fc" id="L207">            patient.getNom(),</span>
+<span class="fc" id="L208">            age,</span>
+<span class="fc" id="L209">            risk</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
