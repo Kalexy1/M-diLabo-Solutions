@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Note.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">patient-ui-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.patientui.model</a> &gt; <span class="el_source">Note.java</span></div><h1>Note.java</h1><pre class="source lang-java linenums">package com.medilabo.patientui.model;
+
+/**
+ * Application: com.medilabo.patientui.model
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;Note&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Représente une note médicale associée à un patient dans le
+ * microservice &lt;em&gt;patient-ui-service&lt;/em&gt;.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * Cette classe n’est pas une entité persistée localement : elle sert
+ * uniquement de modèle pour afficher dans l’UI les données
+ * récupérées depuis le microservice &lt;em&gt;note-service&lt;/em&gt;.
+ * &lt;/p&gt;
+ */
+<span class="nc" id="L17">public class Note {</span>
+
+    /**
+     * Identifiant unique de la note (généré par MongoDB
+     * côté microservice note-service).
+     */
+    private String id;
+
+    /**
+     * Identifiant du patient auquel la note est associée.
+     */
+    private Long patientId;
+
+    /**
+     * Contenu textuel de la note médicale.
+     */
+    private String contenu;
+
+    // --- Getters et setters ---
+
+    /**
+     * Retourne l’identifiant unique de la note.
+     *
+     * @return identifiant de la note
+     */
+    public String getId() {
+<span class="nc" id="L43">        return id;</span>
+    }
+
+    /**
+     * Définit l’identifiant unique de la note.
+     *
+     * @param id identifiant de la note
+     */
+    public void setId(String id) {
+<span class="nc" id="L52">        this.id = id;</span>
+<span class="nc" id="L53">    }</span>
+
+    /**
+     * Retourne l’identifiant du patient associé à la note.
+     *
+     * @return identifiant du patient
+     */
+    public Long getPatientId() {
+<span class="nc" id="L61">        return patientId;</span>
+    }
+
+    /**
+     * Définit l’identifiant du patient associé à la note.
+     *
+     * @param patientId identifiant du patient
+     */
+    public void setPatientId(Long patientId) {
+<span class="nc" id="L70">        this.patientId = patientId;</span>
+<span class="nc" id="L71">    }</span>
+
+    /**
+     * Retourne le contenu textuel de la note.
+     *
+     * @return contenu de la note
+     */
+    public String getContenu() {
+<span class="nc" id="L79">        return contenu;</span>
+    }
+
+    /**
+     * Définit le contenu textuel de la note.
+     *
+     * @param contenu contenu de la note
+     */
+    public void setContenu(String contenu) {
+<span class="nc" id="L88">        this.contenu = contenu;</span>
+<span class="nc" id="L89">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

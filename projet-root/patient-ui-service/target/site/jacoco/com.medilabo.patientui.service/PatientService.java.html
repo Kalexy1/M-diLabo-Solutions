@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PatientService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">patient-ui-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.patientui.service</a> &gt; <span class="el_source">PatientService.java</span></div><h1>PatientService.java</h1><pre class="source lang-java linenums">package com.medilabo.patientui.service;
+
+import com.medilabo.patientui.model.Patient;
+import com.medilabo.patientui.repository.PatientRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Application: com.medilabo.patientui.service
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;PatientService&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Assure la gestion métier des patients dans le microservice &lt;em&gt;patient-ui-service&lt;/em&gt;.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * Cette classe encapsule les opérations de persistence via {@link PatientRepository}
+ * et est utilisée par les contrôleurs pour :
+ * &lt;ul&gt;
+ *   &lt;li&gt;Récupérer la liste complète des patients.&lt;/li&gt;
+ *   &lt;li&gt;Rechercher un patient par son identifiant.&lt;/li&gt;
+ *   &lt;li&gt;Enregistrer ou mettre à jour un patient.&lt;/li&gt;
+ *   &lt;li&gt;Supprimer un patient existant.&lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;/p&gt;
+ */
+@Service
+public class PatientService {
+
+    private final PatientRepository patientRepository;
+
+    /**
+     * Constructeur avec injection de dépendance.
+     *
+     * @param patientRepository repository utilisé pour la persistance des patients
+     */
+    @Autowired
+<span class="fc" id="L40">    public PatientService(PatientRepository patientRepository) {</span>
+<span class="fc" id="L41">        this.patientRepository = patientRepository;</span>
+<span class="fc" id="L42">    }</span>
+
+    /**
+     * Récupère tous les patients enregistrés en base.
+     *
+     * @return une liste de patients persistés
+     */
+    public List&lt;Patient&gt; findAll() {
+<span class="fc" id="L50">        return patientRepository.findAll();</span>
+    }
+
+    /**
+     * Enregistre ou met à jour un patient.
+     *
+     * @param patient patient à persister
+     * @return le patient sauvegardé (avec identifiant généré si nouveau)
+     */
+    public Patient save(Patient patient) {
+<span class="fc" id="L60">        return patientRepository.save(patient);</span>
+    }
+
+    /**
+     * Recherche un patient par son identifiant.
+     *
+     * @param id identifiant unique du patient
+     * @return un {@link Optional} contenant le patient s’il existe, vide sinon
+     */
+    public Optional&lt;Patient&gt; findById(Long id) {
+<span class="fc" id="L70">        return patientRepository.findById(id);</span>
+    }
+
+    /**
+     * Supprime un patient par son identifiant.
+     *
+     * @param id identifiant du patient à supprimer
+     */
+    public void deleteById(Long id) {
+<span class="fc" id="L79">        patientRepository.deleteById(id);</span>
+<span class="fc" id="L80">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

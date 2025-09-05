@@ -7,7 +7,6 @@
 </head>
 <body>
 
-  <!-- Message de bienvenue -->
   <p>
     Bienvenue <span sec:authentication="name"></span> !
     <a th:href="@{/logout}">Se déconnecter</a>
@@ -20,20 +19,25 @@
 
   <h2>Historique médical</h2>
   <ul>
-    <li th:each="note : ${notes}" th:text="${note.contenu}">Contenu de la note</li>
-    <li th:if="${#lists.isEmpty(notes)}">Aucune note pour ce patient.</li>
+    <li th:each="note : ${notes}" th:text="${note.contenu}"></li>
   </ul>
+  <p th:if="${#lists.isEmpty(notes)}">Aucune note pour ce patient.</p>
 
-  <h3>Ajouter une nouvelle note</h3>
-  <form th:action="@{/notes}" method="post">
-    <input type="hidden" name="patientId" th:value="${patient.id}" />
-    <div>
-      <textarea name="contenu" placeholder="Nouvelle note..." rows="3" cols="40" required></textarea>
-    </div>
-    <div>
-      <button type="submit">Ajouter</button>
-    </div>
-  </form>
+  <div sec:authorize="hasRole('PRATICIEN')">
+    <h3>Ajouter une nouvelle note</h3>
+    <form th:action="@{/notes}" method="post">
+
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+      <input type="hidden" name="patientId" th:value="${patient.id}" />
+      <div>
+        <textarea name="contenu" placeholder="Nouvelle note..." rows="3" cols="40" required></textarea>
+      </div>
+      <div>
+        <button type="submit">Ajouter</button>
+      </div>
+    </form>
+  </div>
 
   <br>
   <a th:href="@{/patients}">⬅ Retour à la liste des patients</a>

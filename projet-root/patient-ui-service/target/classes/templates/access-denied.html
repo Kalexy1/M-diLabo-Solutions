@@ -1,0 +1,15 @@
+<!DOCTYPE html> 
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Accès refusé</title>
+</head>
+<body>
+    <h2>🚫 Accès refusé</h2>
+    <p>Vous n’avez pas les autorisations nécessaires pour accéder à cette page.</p>
+    
+    <p><a th:href="@{/}">🏠 Retour à l'accueil</a></p>
+
+    <button onclick="history.back()">🔙 Retour à la page précédente</button>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RiskAssessmentResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">patient-ui-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.patientui.dto</a> &gt; <span class="el_source">RiskAssessmentResponse.java</span></div><h1>RiskAssessmentResponse.java</h1><pre class="source lang-java linenums">package com.medilabo.patientui.dto;
+
+/**
+ * Application: com.medilabo.patientui.dto
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;RiskAssessmentResponse&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Objet de transfert de données (DTO) représentant la réponse du microservice
+ * &lt;em&gt;risk-assessment-service&lt;/em&gt; concernant l’évaluation du niveau de risque d’un patient.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * Cette classe est utilisée pour recevoir la réponse JSON du service d’évaluation des risques
+ * via la Gateway et l’exploiter dans le microservice &lt;em&gt;patient-ui-service&lt;/em&gt;.
+ * &lt;/p&gt;
+ */
+public class RiskAssessmentResponse {
+
+    /**
+     * Identifiant unique du patient.
+     */
+    private Long patientId;
+
+    /**
+     * Prénom du patient.
+     */
+    private String firstName;
+
+    /**
+     * Nom de famille du patient.
+     */
+    private String lastName;
+
+    /**
+     * Âge du patient (calculé côté risk-assessment).
+     */
+    private int age;
+
+    /**
+     * Niveau de risque détecté pour le patient
+     * (par exemple : {@code None}, {@code Borderline}, {@code In Danger}, {@code Early onset}).
+     */
+    private String riskLevel;
+
+    /**
+     * Constructeur sans argument.
+     * &lt;br/&gt;
+     * Requis pour la désérialisation JSON par les frameworks (ex. Jackson).
+     */
+<span class="fc" id="L49">    public RiskAssessmentResponse() {</span>
+<span class="fc" id="L50">    }</span>
+
+    /**
+     * Retourne l’identifiant du patient.
+     *
+     * @return identifiant du patient
+     */
+    public Long getPatientId() {
+<span class="nc" id="L58">        return patientId;</span>
+    }
+
+    /**
+     * Définit l’identifiant du patient.
+     *
+     * @param patientId identifiant du patient
+     */
+    public void setPatientId(Long patientId) {
+<span class="nc" id="L67">        this.patientId = patientId;</span>
+<span class="nc" id="L68">    }</span>
+
+    /**
+     * Retourne le prénom du patient.
+     *
+     * @return prénom du patient
+     */
+    public String getFirstName() {
+<span class="nc" id="L76">        return firstName;</span>
+    }
+
+    /**
+     * Définit le prénom du patient.
+     *
+     * @param firstName prénom du patient
+     */
+    public void setFirstName(String firstName) {
+<span class="nc" id="L85">        this.firstName = firstName;</span>
+<span class="nc" id="L86">    }</span>
+
+    /**
+     * Retourne le nom du patient.
+     *
+     * @return nom du patient
+     */
+    public String getLastName() {
+<span class="nc" id="L94">        return lastName;</span>
+    }
+
+    /**
+     * Définit le nom du patient.
+     *
+     * @param lastName nom du patient
+     */
+    public void setLastName(String lastName) {
+<span class="nc" id="L103">        this.lastName = lastName;</span>
+<span class="nc" id="L104">    }</span>
+
+    /**
+     * Retourne l’âge du patient.
+     *
+     * @return âge du patient
+     */
+    public int getAge() {
+<span class="fc" id="L112">        return age;</span>
+    }
+
+    /**
+     * Définit l’âge du patient.
+     *
+     * @param age âge du patient
+     */
+    public void setAge(int age) {
+<span class="fc" id="L121">        this.age = age;</span>
+<span class="fc" id="L122">    }</span>
+
+    /**
+     * Retourne le niveau de risque détecté.
+     *
+     * @return niveau de risque
+     */
+    public String getRiskLevel() {
+<span class="fc" id="L130">        return riskLevel;</span>
+    }
+
+    /**
+     * Définit le niveau de risque détecté.
+     *
+     * @param riskLevel niveau de risque
+     */
+    public void setRiskLevel(String riskLevel) {
+<span class="fc" id="L139">        this.riskLevel = riskLevel;</span>
+<span class="fc" id="L140">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

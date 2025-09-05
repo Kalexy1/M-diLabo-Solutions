@@ -2,5 +2,6 @@ com\medilabo\patientui\controller\PatientControllerTest.class
 com\medilabo\patientui\PatientUiServiceApplicationTests.class
 com\medilabo\patientui\service\NoteServiceTest.class
 com\medilabo\patientui\controller\AuthControllerTest.class
-com\medilabo\patientui\service\NoteServiceTest$1.class
+com\medilabo\patientui\config\SecurityConfigTest.class
+com\medilabo\patientui\service\PatientServiceTest.class
 com\medilabo\patientui\repository\PatientRepositoryTest.class
