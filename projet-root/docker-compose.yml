@@ -94,6 +94,21 @@ services:
     networks:
       - backend
 
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: auth-service
+    ports:
+      - "8085:8080"
+    depends_on:
+      - mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/patientdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: admin.01234
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge
