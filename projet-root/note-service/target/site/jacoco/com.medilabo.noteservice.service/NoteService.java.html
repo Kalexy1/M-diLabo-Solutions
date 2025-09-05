@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NoteService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">note-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.noteservice.service</a> &gt; <span class="el_source">NoteService.java</span></div><h1>NoteService.java</h1><pre class="source lang-java linenums">package com.medilabo.noteservice.service;
+
+import com.medilabo.noteservice.model.Note;
+import com.medilabo.noteservice.repository.NoteRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+/**
+ * Application: com.medilabo.noteservice.service
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;NoteService&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Service métier pour gérer les notes médicales des patients.
+ * &lt;/p&gt;
+ */
+@Service
+public class NoteService {
+
+    @Autowired
+    private NoteRepository noteRepository;
+
+    /**
+     * Constructeur permettant l'injection du repository.
+     *
+     * @param noteRepository repository des notes
+     */
+<span class="fc" id="L29">    public NoteService(NoteRepository noteRepository) {</span>
+<span class="fc" id="L30">        this.noteRepository = noteRepository;</span>
+<span class="fc" id="L31">    }</span>
+
+    /**
+     * Récupère toutes les notes associées à un patient donné.
+     *
+     * @param patientId l'identifiant du patient
+     * @return la liste des notes du patient
+     */
+    public List&lt;Note&gt; getNotesByPatientId(Integer patientId) {
+<span class="fc" id="L40">        return noteRepository.findByPatientId(patientId);</span>
+    }
+
+    /**
+     * Ajoute une nouvelle note pour un patient.
+     *
+     * @param note la note à ajouter
+     * @return la note enregistrée
+     */
+    public Note addNote(Note note) {
+<span class="fc" id="L50">        return noteRepository.save(note);</span>
+    }
+
+    /**
+     * Supprime une note par son identifiant.
+     *
+     * @param id l'identifiant de la note à supprimer
+     */
+    public void deleteNoteById(String id) {
+<span class="fc" id="L59">        noteRepository.deleteById(id);</span>
+<span class="fc" id="L60">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

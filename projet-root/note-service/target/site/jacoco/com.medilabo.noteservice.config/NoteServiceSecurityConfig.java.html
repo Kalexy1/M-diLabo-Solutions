@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NoteServiceSecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">note-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.noteservice.config</a> &gt; <span class="el_source">NoteServiceSecurityConfig.java</span></div><h1>NoteServiceSecurityConfig.java</h1><pre class="source lang-java linenums">package com.medilabo.noteservice.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+/**
+ * Application: com.medilabo.noteservice.config
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;NoteServiceSecurityConfig&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Configuration de la sécurité pour le microservice note-service.
+ * Active la sécurité HTTP basique et autorise les annotations @PreAuthorize.
+ * &lt;/p&gt;
+ */
+@Configuration
+@EnableMethodSecurity
+<span class="fc" id="L20">public class NoteServiceSecurityConfig {</span>
+
+    /**
+     * Configure la chaîne de filtres de sécurité :
+     * &lt;ul&gt;
+     *   &lt;li&gt;Désactive CSRF (utile pour les APIs REST)&lt;/li&gt;
+     *   &lt;li&gt;Nécessite une authentification pour toutes les requêtes&lt;/li&gt;
+     *   &lt;li&gt;Utilise l'authentification HTTP Basic (gérée en amont par la Gateway)&lt;/li&gt;
+     * &lt;/ul&gt;
+     *
+     * @param http configuration HTTP
+     * @return le filtre de sécurité
+     * @throws Exception en cas de mauvaise configuration
+     */
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+<span class="fc" id="L36">        return http</span>
+<span class="fc" id="L37">            .csrf().disable()</span>
+<span class="fc" id="L38">            .authorizeHttpRequests(auth -&gt; auth.anyRequest().authenticated())</span>
+<span class="fc" id="L39">            .httpBasic()</span>
+<span class="fc" id="L40">            .and()</span>
+<span class="fc" id="L41">            .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
