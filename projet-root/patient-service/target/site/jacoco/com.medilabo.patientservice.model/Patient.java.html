@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Patient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">patient-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.patientservice.model</a> &gt; <span class="el_source">Patient.java</span></div><h1>Patient.java</h1><pre class="source lang-java linenums">package com.medilabo.patientservice.model;
+
+import jakarta.persistence.*;
+import java.time.LocalDate;
+
+/**
+ * Application: com.medilabo.patientservice.model
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;Patient&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Entité JPA représentant un patient dans le système.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * Cette entité est persistée en base de données via JPA/Hibernate.
+ * &lt;/p&gt;
+ */
+@Entity
+public class Patient {
+
+    /** Identifiant unique du patient, généré automatiquement. */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    /** Prénom du patient. */
+    private String prenom;
+
+    /** Nom de famille du patient. */
+    private String nom;
+
+    /** Date de naissance du patient. */
+    private LocalDate dateNaissance;
+
+    /** Genre du patient (par ex. &quot;M&quot; ou &quot;F&quot;). */
+    private String genre;
+
+    /** Adresse postale du patient. */
+    private String adresse;
+
+    /** Numéro de téléphone du patient. */
+    private String telephone;
+
+    /** Constructeur sans argument requis par JPA. */
+<span class="fc" id="L44">    public Patient() {}</span>
+
+    /**
+     * Constructeur complet.
+     *
+     * @param id identifiant du patient
+     * @param prenom prénom du patient
+     * @param nom nom du patient
+     * @param dateNaissance date de naissance
+     * @param genre genre
+     * @param adresse adresse postale
+     * @param telephone numéro de téléphone
+     */
+<span class="nc" id="L57">    public Patient(Long id, String prenom, String nom, LocalDate dateNaissance, String genre, String adresse, String telephone) {</span>
+<span class="nc" id="L58">        this.id = id;</span>
+<span class="nc" id="L59">        this.prenom = prenom;</span>
+<span class="nc" id="L60">        this.nom = nom;</span>
+<span class="nc" id="L61">        this.dateNaissance = dateNaissance;</span>
+<span class="nc" id="L62">        this.genre = genre;</span>
+<span class="nc" id="L63">        this.adresse = adresse;</span>
+<span class="nc" id="L64">        this.telephone = telephone;</span>
+<span class="nc" id="L65">    }</span>
+
+    /**
+     * Constructeur sans identifiant (pour création).
+     *
+     * @param prenom prénom du patient
+     * @param nom nom du patient
+     * @param dateNaissance date de naissance
+     * @param genre genre
+     * @param adresse adresse postale
+     * @param telephone numéro de téléphone
+     */
+<span class="fc" id="L77">    public Patient(String prenom, String nom, LocalDate dateNaissance, String genre, String adresse, String telephone) {</span>
+<span class="fc" id="L78">        this.prenom = prenom;</span>
+<span class="fc" id="L79">        this.nom = nom;</span>
+<span class="fc" id="L80">        this.dateNaissance = dateNaissance;</span>
+<span class="fc" id="L81">        this.genre = genre;</span>
+<span class="fc" id="L82">        this.adresse = adresse;</span>
+<span class="fc" id="L83">        this.telephone = telephone;</span>
+<span class="fc" id="L84">    }</span>
+
+    /** @return identifiant du patient */
+<span class="fc" id="L87">    public Long getId() { return id; }</span>
+    /** @param id identifiant du patient */
+<span class="fc" id="L89">    public void setId(Long id) { this.id = id; }</span>
+
+    /** @return prénom du patient */
+<span class="fc" id="L92">    public String getPrenom() { return prenom; }</span>
+    /** @param prenom prénom du patient */
+<span class="fc" id="L94">    public void setPrenom(String prenom) { this.prenom = prenom; }</span>
+
+    /** @return nom du patient */
+<span class="fc" id="L97">    public String getNom() { return nom; }</span>
+    /** @param nom nom du patient */
+<span class="fc" id="L99">    public void setNom(String nom) { this.nom = nom; }</span>
+
+    /** @return date de naissance du patient */
+<span class="fc" id="L102">    public LocalDate getDateNaissance() { return dateNaissance; }</span>
+    /** @param dateNaissance date de naissance du patient */
+<span class="fc" id="L104">    public void setDateNaissance(LocalDate dateNaissance) { this.dateNaissance = dateNaissance; }</span>
+
+    /** @return genre du patient */
+<span class="fc" id="L107">    public String getGenre() { return genre; }</span>
+    /** @param genre genre du patient */
+<span class="fc" id="L109">    public void setGenre(String genre) { this.genre = genre; }</span>
+
+    /** @return adresse du patient */
+<span class="fc" id="L112">    public String getAdresse() { return adresse; }</span>
+    /** @param adresse adresse du patient */
+<span class="fc" id="L114">    public void setAdresse(String adresse) { this.adresse = adresse; }</span>
+
+    /** @return numéro de téléphone du patient */
+<span class="fc" id="L117">    public String getTelephone() { return telephone; }</span>
+    /** @param telephone numéro de téléphone du patient */
+<span class="fc" id="L119">    public void setTelephone(String telephone) { this.telephone = telephone; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

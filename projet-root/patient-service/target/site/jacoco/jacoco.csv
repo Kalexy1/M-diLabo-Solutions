@@ -1,0 +1,6 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+patient-service,com.medilabo.patientservice.service,PatientService,0,81,0,0,0,18,0,8,0,8
+patient-service,com.medilabo.patientservice.controller,PatientController,1,46,2,2,0,12,2,7,0,7
+patient-service,com.medilabo.patientservice.model,Patient,24,73,0,0,9,23,1,16,1,16
+patient-service,com.medilabo.patientservice,PatientServiceApplication,5,11,0,0,2,2,1,2,1,2
+patient-service,com.medilabo.patientservice.config,PatientServiceSecurityConfig,0,50,0,0,0,16,0,7,0,7

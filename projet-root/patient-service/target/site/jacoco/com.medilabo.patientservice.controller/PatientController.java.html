@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PatientController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">patient-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.patientservice.controller</a> &gt; <span class="el_source">PatientController.java</span></div><h1>PatientController.java</h1><pre class="source lang-java linenums">package com.medilabo.patientservice.controller;
+
+import com.medilabo.patientservice.model.Patient;
+import com.medilabo.patientservice.service.PatientService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
+
+/**
+ * Application: com.medilabo.patientservice.controller
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;PatientController&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Contrôleur Spring MVC gérant les endpoints du microservice
+ * &lt;em&gt;patient-service&lt;/em&gt; et redirigeant vers le &lt;em&gt;patient-ui-service&lt;/em&gt;
+ * via la Gateway pour l'affichage Thymeleaf.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * Droits d'accès :
+ * &lt;ul&gt;
+ *   &lt;li&gt;&lt;b&gt;ORGANISATEUR&lt;/b&gt; : ajout, modification, suppression et consultation.&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;PRATICIEN&lt;/b&gt; : consultation uniquement.&lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;/p&gt;
+ */
+@Controller
+@RequestMapping(&quot;/patients&quot;)
+<span class="fc" id="L31">public class PatientController {</span>
+
+    @Autowired
+    private PatientService patientService;
+
+    /**
+     * Redirige vers la liste des patients du &lt;em&gt;patient-ui-service&lt;/em&gt;.
+     *
+     * @return redirection vers {@code /ui/patients}.
+     */
+    @PreAuthorize(&quot;hasAnyRole('ORGANISATEUR', 'PRATICIEN')&quot;)
+    @GetMapping
+    public String redirectToUiList() {
+<span class="fc" id="L44">        return &quot;redirect:/ui/patients&quot;;</span>
+    }
+
+    /**
+     * Redirige vers le formulaire d’ajout d’un patient dans le &lt;em&gt;patient-ui-service&lt;/em&gt;.
+     *
+     * @return redirection vers {@code /ui/patients/new}.
+     */
+    @PreAuthorize(&quot;hasRole('ORGANISATEUR')&quot;)
+    @GetMapping(&quot;/new&quot;)
+    public String redirectToUiAddForm() {
+<span class="fc" id="L55">        return &quot;redirect:/ui/patients/new&quot;;</span>
+    }
+
+    /**
+     * Sauvegarde un nouveau patient et redirige vers la liste des patients.
+     *
+     * @param patient patient à enregistrer.
+     * @return redirection vers {@code /ui/patients}.
+     */
+    @PreAuthorize(&quot;hasRole('ORGANISATEUR')&quot;)
+    @PostMapping
+    public String savePatient(@ModelAttribute Patient patient) {
+<span class="fc" id="L67">        patientService.savePatient(patient);</span>
+<span class="fc" id="L68">        return &quot;redirect:/ui/patients&quot;;</span>
+    }
+
+    /**
+     * Redirige vers le formulaire d’édition d’un patient.
+     * Si le patient n’existe pas, redirige vers la liste.
+     *
+     * @param id identifiant du patient.
+     * @return redirection vers {@code /ui/patients/edit/{id}} ou {@code /ui/patients}.
+     */
+    @PreAuthorize(&quot;hasRole('ORGANISATEUR')&quot;)
+    @GetMapping(&quot;/edit/{id}&quot;)
+    public String redirectToUiEditForm(@PathVariable Long id) {
+<span class="fc" id="L81">        Optional&lt;Patient&gt; p = patientService.getPatientById(id);</span>
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">        return p.isPresent() ? &quot;redirect:/ui/patients/edit/&quot; + id : &quot;redirect:/ui/patients&quot;;</span>
+    }
+
+    /**
+     * Met à jour les informations d’un patient existant puis redirige vers la liste.
+     * Utilise {@link PatientService#updatePatient(Long, Patient)} afin d'appliquer
+     * les modifications uniquement si le patient existe.
+     *
+     * @param patient patient contenant les nouvelles données (l'ID doit être renseigné).
+     * @return redirection vers {@code /ui/patients}.
+     */
+    @PreAuthorize(&quot;hasRole('ORGANISATEUR')&quot;)
+    @PostMapping(&quot;/update&quot;)
+    public String updatePatient(@ModelAttribute Patient patient) {
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">        if (patient.getId() != null) {</span>
+<span class="fc" id="L97">            patientService.updatePatient(patient.getId(), patient);</span>
+        }
+<span class="fc" id="L99">        return &quot;redirect:/ui/patients&quot;;</span>
+    }
+
+    /**
+     * Supprime un patient (appel en POST recommandé pour supporter CSRF) puis redirige vers la liste.
+     *
+     * @param id identifiant du patient à supprimer.
+     * @return redirection vers {@code /ui/patients}.
+     */
+    @PreAuthorize(&quot;hasRole('ORGANISATEUR')&quot;)
+    @PostMapping(&quot;/delete/{id}&quot;)
+    public String deletePatient(@PathVariable Long id) {
+<span class="fc" id="L111">        patientService.deletePatient(id);</span>
+<span class="fc" id="L112">        return &quot;redirect:/ui/patients&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
