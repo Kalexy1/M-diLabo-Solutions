@@ -5,7 +5,7 @@ spring:
         - PreserveHostHeader
       routes:
         - id: auth-service
-          uri: http://auth-service:8080
+          uri: http://localhost:8080
           predicates:
             - Path=/auth/**
 
