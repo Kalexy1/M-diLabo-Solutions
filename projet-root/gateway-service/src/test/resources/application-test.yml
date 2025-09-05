@@ -1,0 +1,7 @@
+spring:
+  cloud:
+    gateway:
+      enabled: false
+      routes: []
+server:
+  port: 0

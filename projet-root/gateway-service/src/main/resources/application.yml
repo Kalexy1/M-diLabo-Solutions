@@ -1,12 +1,14 @@
-server:
-  port: 8080
-
 spring:
   cloud:
     gateway:
       default-filters:
-        - RemoveRequestHeader=Cookie
+        - PreserveHostHeader
       routes:
+        - id: auth-service
+          uri: http://auth-service:8080
+          predicates:
+            - Path=/auth/**
+
         - id: patient-service
           uri: http://patient-service:8081
           predicates:
@@ -20,4 +22,18 @@ spring:
         - id: risk-assessment-service
           uri: http://risk-assessment-service:8084
           predicates:
-          - Path=/assess/**
+            - Path=/risk/**
+          filters:
+            - RewritePath=/risk/(?<segment>.*), /assess/${segment}
+
+        - id: access-denied-page
+          uri: http://patient-ui-service:8082
+          predicates:
+            - Path=/access-denied
+
+        - id: patient-ui-service
+          uri: http://patient-ui-service:8082
+          predicates:
+            - Path=/ui/**
+          filters:
+            - StripPrefix=1
