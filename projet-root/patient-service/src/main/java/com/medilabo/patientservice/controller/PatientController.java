@@ -1,94 +1,114 @@
 package com.medilabo.patientservice.controller;
 
 import com.medilabo.patientservice.model.Patient;
-import com.medilabo.patientservice.repository.PatientRepository;
+import com.medilabo.patientservice.service.PatientService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Optional;
 
 /**
- * Contrôleur REST pour la gestion des patients.
+ * Application: com.medilabo.patientservice.controller
  * <p>
- * Fournit des endpoints pour les opérations CRUD sur les entités {@link Patient}.
+ * Classe <strong>PatientController</strong>.
+ * <br/>
+ * Rôle : Contrôleur Spring MVC gérant les endpoints du microservice
+ * <em>patient-service</em> et redirigeant vers le <em>patient-ui-service</em>
+ * via la Gateway pour l'affichage Thymeleaf.
+ * </p>
+ * <p>
+ * Droits d'accès :
+ * <ul>
+ *   <li><b>ORGANISATEUR</b> : ajout, modification, suppression et consultation.</li>
+ *   <li><b>PRATICIEN</b> : consultation uniquement.</li>
+ * </ul>
  * </p>
  */
-@RestController
+@Controller
 @RequestMapping("/patients")
 public class PatientController {
 
     @Autowired
-    private PatientRepository repository;
+    private PatientService patientService;
 
     /**
-     * Récupère la liste de tous les patients.
+     * Redirige vers la liste des patients du <em>patient-ui-service</em>.
      *
-     * @return une liste de tous les {@link Patient}
+     * @return redirection vers {@code /ui/patients}.
      */
+    @PreAuthorize("hasAnyRole('ORGANISATEUR', 'PRATICIEN')")
     @GetMapping
-    public List<Patient> getAll() {
-        return repository.findAll();
+    public String redirectToUiList() {
+        return "redirect:/ui/patients";
     }
 
     /**
-     * Récupère un patient par son identifiant.
+     * Redirige vers le formulaire d’ajout d’un patient dans le <em>patient-ui-service</em>.
      *
-     * @param id l'identifiant du patient à rechercher
-     * @return une réponse contenant le {@link Patient} trouvé ou un code 404 si non trouvé
+     * @return redirection vers {@code /ui/patients/new}.
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<Patient> getOne(@PathVariable Long id) {
-        return repository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    @PreAuthorize("hasRole('ORGANISATEUR')")
+    @GetMapping("/new")
+    public String redirectToUiAddForm() {
+        return "redirect:/ui/patients/new";
     }
 
     /**
-     * Crée un nouveau patient dans la base de données.
+     * Sauvegarde un nouveau patient et redirige vers la liste des patients.
      *
-     * @param patient l'objet {@link Patient} à créer
-     * @return le {@link Patient} sauvegardé
+     * @param patient patient à enregistrer.
+     * @return redirection vers {@code /ui/patients}.
      */
+    @PreAuthorize("hasRole('ORGANISATEUR')")
     @PostMapping
-    public Patient create(@RequestBody Patient patient) {
-        return repository.save(patient);
+    public String savePatient(@ModelAttribute Patient patient) {
+        patientService.savePatient(patient);
+        return "redirect:/ui/patients";
     }
 
     /**
-     * Met à jour un patient existant.
+     * Redirige vers le formulaire d’édition d’un patient.
+     * Si le patient n’existe pas, redirige vers la liste.
      *
-     * @param id l'identifiant du patient à mettre à jour
-     * @param updatedPatient les nouvelles informations du patient
-     * @return une réponse contenant le {@link Patient} mis à jour ou un code 404 si non trouvé
+     * @param id identifiant du patient.
+     * @return redirection vers {@code /ui/patients/edit/{id}} ou {@code /ui/patients}.
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<Patient> update(@PathVariable Long id, @RequestBody Patient updatedPatient) {
-        return repository.findById(id).map(patient -> {
-            patient.setPrenom(updatedPatient.getPrenom());
-            patient.setNom(updatedPatient.getNom());
-            patient.setDateNaissance(updatedPatient.getDateNaissance());
-            patient.setGenre(updatedPatient.getGenre());
-            patient.setAdresse(updatedPatient.getAdresse());
-            patient.setTelephone(updatedPatient.getTelephone());
-            return ResponseEntity.ok(repository.save(patient));
-        }).orElse(ResponseEntity.notFound().build());
+    @PreAuthorize("hasRole('ORGANISATEUR')")
+    @GetMapping("/edit/{id}")
+    public String redirectToUiEditForm(@PathVariable Long id) {
+        Optional<Patient> p = patientService.getPatientById(id);
+        return p.isPresent() ? "redirect:/ui/patients/edit/" + id : "redirect:/ui/patients";
     }
 
     /**
-     * Supprime un patient par son identifiant.
+     * Met à jour les informations d’un patient existant puis redirige vers la liste.
+     * Utilise {@link PatientService#updatePatient(Long, Patient)} afin d'appliquer
+     * les modifications uniquement si le patient existe.
      *
-     * @param id l'identifiant du patient à supprimer
-     * @return une réponse 200 OK si le patient a été supprimé, ou 404 Not Found s'il n'existe pas
+     * @param patient patient contenant les nouvelles données (l'ID doit être renseigné).
+     * @return redirection vers {@code /ui/patients}.
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            return ResponseEntity.ok().build();
-        } else {
-            return ResponseEntity.notFound().build();
+    @PreAuthorize("hasRole('ORGANISATEUR')")
+    @PostMapping("/update")
+    public String updatePatient(@ModelAttribute Patient patient) {
+        if (patient.getId() != null) {
+            patientService.updatePatient(patient.getId(), patient);
         }
+        return "redirect:/ui/patients";
     }
 
+    /**
+     * Supprime un patient (appel en POST recommandé pour supporter CSRF) puis redirige vers la liste.
+     *
+     * @param id identifiant du patient à supprimer.
+     * @return redirection vers {@code /ui/patients}.
+     */
+    @PreAuthorize("hasRole('ORGANISATEUR')")
+    @PostMapping("/delete/{id}")
+    public String deletePatient(@PathVariable Long id) {
+        patientService.deletePatient(id);
+        return "redirect:/ui/patients";
+    }
 }

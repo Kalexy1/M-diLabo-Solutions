@@ -3,12 +3,23 @@ package com.medilabo.patientservice.repository;
 import com.medilabo.patientservice.model.Patient;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 /**
- * Interface de repository pour l'accès aux données des {@link Patient}.
+ * Application: com.medilabo.patientservice.repository
  * <p>
- * Étend {@link JpaRepository} pour fournir les opérations CRUD de base ainsi que la pagination
- * et le tri sur l'entité {@link Patient}.
+ * Interface <strong>PatientRepository</strong>.
+ * <br/>
+ * Rôle : Accès aux données des patients via Spring Data JPA.
  * </p>
  */
 public interface PatientRepository extends JpaRepository<Patient, Long> {
+
+    /**
+     * Recherche des patients par nom (insensible à la casse selon provider).
+     *
+     * @param nom nom de famille.
+     * @return liste de patients correspondant.
+     */
+    List<Patient> findByNom(String nom);
 }
