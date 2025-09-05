@@ -38,18 +38,19 @@ import org.springframework.security.web.SecurityFilterChain;
             )
 <span class="fc" id="L39">            .formLogin(form -&gt; form</span>
 <span class="fc" id="L40">                .loginPage(&quot;/auth/login&quot;)</span>
-<span class="fc" id="L41">                .defaultSuccessUrl(&quot;/&quot;, true)</span>
-<span class="fc" id="L42">                .permitAll()</span>
+<span class="fc" id="L41">                .loginProcessingUrl(&quot;/auth/login&quot;)</span>
+<span class="fc" id="L42">                .defaultSuccessUrl(&quot;/&quot;, true)</span>
+<span class="fc" id="L43">                .permitAll()</span>
             )
-<span class="fc" id="L44">            .logout(logout -&gt; logout</span>
-<span class="fc" id="L45">                .logoutUrl(&quot;/logout&quot;)</span>
-<span class="fc" id="L46">                .logoutSuccessUrl(&quot;/auth/login?logout&quot;)</span>
-<span class="fc" id="L47">                .permitAll()</span>
+<span class="fc" id="L45">            .logout(logout -&gt; logout</span>
+<span class="fc" id="L46">                .logoutUrl(&quot;/logout&quot;)</span>
+<span class="fc" id="L47">                .logoutSuccessUrl(&quot;/auth/login?logout&quot;)</span>
+<span class="fc" id="L48">                .permitAll()</span>
             )
-<span class="fc" id="L49">            .exceptionHandling(e -&gt; e</span>
-<span class="fc" id="L50">                .accessDeniedPage(&quot;/access-denied&quot;)</span>
+<span class="fc" id="L50">            .exceptionHandling(e -&gt; e</span>
+<span class="fc" id="L51">                .accessDeniedPage(&quot;/access-denied&quot;)</span>
             );
-<span class="fc" id="L52">        return http.build();</span>
+<span class="fc" id="L53">        return http.build();</span>
     }
 
     /**
@@ -59,7 +60,7 @@ import org.springframework.security.web.SecurityFilterChain;
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
-<span class="fc" id="L62">        return new BCryptPasswordEncoder();</span>
+<span class="fc" id="L63">        return new BCryptPasswordEncoder();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

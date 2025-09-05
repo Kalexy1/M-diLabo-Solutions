@@ -11,6 +11,7 @@
 
     <!-- Formulaire de connexion avec action vers /login (Spring Security) -->
     <form th:action="@{/auth/login}" method="post">
+		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
         <div>
             <label for="username">Nom d'utilisateur :</label>
             <input type="text" id="username" name="username" required autofocus />
