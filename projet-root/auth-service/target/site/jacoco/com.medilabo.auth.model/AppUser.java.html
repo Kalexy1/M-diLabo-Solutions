@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AppUser.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.auth.model</a> &gt; <span class="el_source">AppUser.java</span></div><h1>AppUser.java</h1><pre class="source lang-java linenums">package com.medilabo.auth.model;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+
+/**
+ * Application: com.medilabo.auth.model
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;AppUser&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle: Représente un utilisateur de l'application pour l'authentification et l'autorisation.
+ * &lt;/p&gt;
+ */
+@Entity
+@Table(name = &quot;users&quot;)
+<span class="fc" id="L16">public class AppUser {</span>
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    @NotBlank
+    @Column(nullable = false)
+    private String password;
+
+    @NotBlank
+    @Column(nullable = false)
+    private String role;
+
+    /**
+     * @return identifiant unique de l'utilisateur.
+     */
+<span class="nc" id="L37">    public Long getId() { return id; }</span>
+
+    /**
+     * @param id identifiant unique de l'utilisateur.
+     */
+<span class="nc" id="L42">    public void setId(Long id) { this.id = id; }</span>
+
+    /**
+     * @return nom d'utilisateur.
+     */
+<span class="fc" id="L47">    public String getUsername() { return username; }</span>
+
+    /**
+     * @param username nom d'utilisateur.
+     */
+<span class="fc" id="L52">    public void setUsername(String username) { this.username = username; }</span>
+
+    /**
+     * @return mot de passe.
+     */
+<span class="fc" id="L57">    public String getPassword() { return password; }</span>
+
+    /**
+     * @param password mot de passe.
+     */
+<span class="fc" id="L62">    public void setPassword(String password) { this.password = password; }</span>
+
+    /**
+     * @return rôle de l'utilisateur.
+     */
+<span class="fc" id="L67">    public String getRole() { return role; }</span>
+
+    /**
+     * Définit le rôle utilisateur. Le rôle doit être soit &quot;ROLE_ORGANISATEUR&quot; soit &quot;ROLE_PRATICIEN&quot;.
+     * Si le rôle ne commence pas par &quot;ROLE_&quot;, il est automatiquement préfixé.
+     *
+     * @param role rôle utilisateur.
+     */
+    public void setRole(String role) {
+<span class="fc" id="L76">        String formattedRole = formatRole(role);</span>
+<span class="fc bfc" id="L77" title="All 4 branches covered.">        if (!formattedRole.equals(&quot;ROLE_ORGANISATEUR&quot;) &amp;&amp; !formattedRole.equals(&quot;ROLE_PRATICIEN&quot;)) {</span>
+<span class="fc" id="L78">            throw new IllegalArgumentException(&quot;Rôle invalide&quot;);</span>
+        }
+<span class="fc" id="L80">        this.role = formattedRole;</span>
+<span class="fc" id="L81">    }</span>
+
+    /**
+     * Ajoute le préfixe ROLE_ si manquant et transforme en majuscules.
+     *
+     * @param role rôle utilisateur.
+     * @return rôle formaté.
+     */
+    private String formatRole(String role) {
+<span class="fc" id="L90">        String upper = role.toUpperCase();</span>
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        return upper.startsWith(&quot;ROLE_&quot;) ? upper : &quot;ROLE_&quot; + upper;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,8 @@
+com\medilabo\auth\config\SecurityConfigTest.class
+com\medilabo\auth\config\TestSecurityConfig.class
+com\medilabo\auth\service\UserServiceTest.class
+com\medilabo\auth\controller\HomeControllerTest.class
+com\medilabo\auth\AuthServiceApplicationTests.class
+com\medilabo\auth\service\CustomUserDetailsServiceTest.class
+com\medilabo\auth\controller\AuthControllerTest.class
+com\medilabo\auth\model\AppUserTest.class

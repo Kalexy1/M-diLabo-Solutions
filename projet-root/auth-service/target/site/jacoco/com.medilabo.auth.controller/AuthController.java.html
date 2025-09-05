@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.auth.controller</a> &gt; <span class="el_source">AuthController.java</span></div><h1>AuthController.java</h1><pre class="source lang-java linenums">package com.medilabo.auth.controller;
+
+import com.medilabo.auth.model.AppUser;
+import com.medilabo.auth.service.UserService;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * Application: com.medilabo.auth.controller
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;AuthController&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle: Gère les opérations d'authentification et d'inscription des utilisateurs.
+ * &lt;/p&gt;
+ */
+@Controller
+@RequestMapping(&quot;/auth&quot;)
+public class AuthController {
+
+    private final UserService userService;
+
+    /**
+     * Constructeur AuthController.
+     *
+     * @param userService service de gestion des utilisateurs.
+     */
+    @Autowired
+<span class="fc" id="L32">    public AuthController(UserService userService) {</span>
+<span class="fc" id="L33">        this.userService = userService;</span>
+<span class="fc" id="L34">    }</span>
+
+    /**
+     * showLoginForm: Affiche le formulaire de connexion.
+     *
+     * @return nom de la vue login.
+     */
+    @GetMapping(&quot;/login&quot;)
+    public String showLoginForm() {
+<span class="fc" id="L43">        return &quot;login&quot;;</span>
+    }
+
+    /**
+     * showRegistrationForm: Affiche le formulaire d'inscription.
+     *
+     * @param model modèle pour la vue.
+     * @return nom de la vue register.
+     */
+    @GetMapping(&quot;/register&quot;)
+    public String showRegistrationForm(Model model) {
+<span class="fc" id="L54">        model.addAttribute(&quot;user&quot;, new AppUser());</span>
+<span class="fc" id="L55">        return &quot;register&quot;;</span>
+    }
+
+    /**
+     * registerUser: Traite l'inscription d'un nouvel utilisateur.
+     *
+     * @param user   utilisateur à enregistrer.
+     * @param result résultats de validation.
+     * @param model  modèle pour la vue.
+     * @return redirection ou vue en cas d'erreur.
+     */
+    @PostMapping(&quot;/register&quot;)
+    public String registerUser(@Valid @ModelAttribute(&quot;user&quot;) AppUser user,
+                               BindingResult result,
+                               Model model) {
+
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">        if (result.hasErrors()) {</span>
+<span class="nc" id="L72">            return &quot;register&quot;;</span>
+        }
+
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (userService.userExists(user.getUsername())) {</span>
+<span class="fc" id="L76">            model.addAttribute(&quot;error&quot;, &quot;Nom d'utilisateur déjà pris&quot;);</span>
+<span class="fc" id="L77">            return &quot;register&quot;;</span>
+        }
+
+<span class="fc" id="L80">        String role = user.getRole().toUpperCase();</span>
+<span class="pc bpc" id="L81" title="1 of 2 branches missed.">        if (!role.startsWith(&quot;ROLE_&quot;)) {</span>
+<span class="nc" id="L82">            role = &quot;ROLE_&quot; + role;</span>
+        }
+<span class="fc" id="L84">        user.setRole(role);</span>
+
+<span class="fc" id="L86">        userService.saveUser(user);</span>
+<span class="fc" id="L87">        return &quot;redirect:/auth/login&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
