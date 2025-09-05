@@ -1,66 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.auth.config</a> &gt; <span class="el_source">SecurityConfig.java</span></div><h1>SecurityConfig.java</h1><pre class="source lang-java linenums">package com.medilabo.auth.config;
 
+import com.medilabo.auth.security.JwtIssuer;
+import jakarta.servlet.http.Cookie;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Application: com.medilabo.auth.config
+ * Configuration de la sécurité pour le microservice {@code auth-service}.
+ *
  * &lt;p&gt;
- * Classe &lt;strong&gt;SecurityConfig&lt;/strong&gt;.
- * &lt;br/&gt;
- * Rôle: Configure la sécurité Spring Security pour l'application.
+ * Cette classe définit les règles de sécurité et la gestion de l’authentification.
+ * Elle utilise Spring Security avec un formulaire de login personnalisé
+ * et génère un JWT pour chaque utilisateur authentifié.
  * &lt;/p&gt;
+ *
+ * &lt;h3&gt;Fonctionnalités principales&lt;/h3&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;Autorise l’accès public à certaines routes : {@code /auth/register}, {@code /auth/login},
+ *       {@code /access-denied}, ressources statiques.&lt;/li&gt;
+ *   &lt;li&gt;Exige une authentification pour toutes les autres routes.&lt;/li&gt;
+ *   &lt;li&gt;Après une connexion réussie :
+ *     &lt;ul&gt;
+ *       &lt;li&gt;Un JWT signé est généré via {@link JwtIssuer}.&lt;/li&gt;
+ *       &lt;li&gt;Le JWT est placé dans un cookie HttpOnly {@code ACCESS_TOKEN} (valide 1h).&lt;/li&gt;
+ *       &lt;li&gt;L’utilisateur est redirigé vers {@code /ui/patients} via le gateway.&lt;/li&gt;
+ *     &lt;/ul&gt;
+ *   &lt;/li&gt;
+ *   &lt;li&gt;En cas d’échec de connexion, redirige vers {@code /auth/login?error}.&lt;/li&gt;
+ *   &lt;li&gt;À la déconnexion, le cookie {@code ACCESS_TOKEN} est supprimé et
+ *       l’utilisateur est redirigé vers {@code /auth/login?logout}.&lt;/li&gt;
+ * &lt;/ul&gt;
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-<span class="fc" id="L23">public class SecurityConfig {</span>
+public class SecurityConfig {
 
     /**
-     * securityFilterChain: Définit la configuration des règles de sécurité HTTP.
+     * Composant responsable de la génération des JWT.
+     */
+    private final JwtIssuer jwtIssuer;
+
+    /**
+     * Constructeur qui injecte le générateur de JWT.
      *
-     * @param http configuration HttpSecurity.
-     * @return SecurityFilterChain instance configurée.
-     * @throws Exception en cas de problème de configuration.
+     * @param jwtIssuer service permettant d’émettre des JWT signés
+     */
+<span class="fc" id="L55">    public SecurityConfig(JwtIssuer jwtIssuer) {</span>
+<span class="fc" id="L56">        this.jwtIssuer = jwtIssuer;</span>
+<span class="fc" id="L57">    }</span>
+
+    /**
+     * Chaîne de filtres de sécurité HTTP.
+     *
+     * &lt;p&gt;
+     * Définit les règles d’accès, la gestion du formulaire de login et
+     * le traitement personnalisé après authentification ou déconnexion.
+     * &lt;/p&gt;
+     *
+     * @param http objet {@link HttpSecurity} fourni par Spring
+     * @return la configuration complète de la sécurité
+     * @throws Exception si un problème survient lors de la configuration
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-<span class="fc" id="L34">        http</span>
-<span class="fc" id="L35">            .authorizeHttpRequests(auth -&gt; auth</span>
-<span class="fc" id="L36">                .requestMatchers(&quot;/auth/register&quot;, &quot;/auth/login&quot;, &quot;/access-denied&quot;, &quot;/logout&quot;, &quot;/css/**&quot;, &quot;/js/**&quot;).permitAll()</span>
-<span class="fc" id="L37">                .anyRequest().authenticated()</span>
+<span class="fc" id="L73">        http</span>
+<span class="fc" id="L74">            .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="fc" id="L75">                .requestMatchers(</span>
+<span class="fc" id="L76">                    &quot;/auth/register&quot;, &quot;/auth/login&quot;, &quot;/access-denied&quot;,</span>
+<span class="fc" id="L77">                    &quot;/logout&quot;, &quot;/css/**&quot;, &quot;/js/**&quot;, &quot;/images/**&quot;</span>
+<span class="fc" id="L78">                ).permitAll()</span>
+<span class="fc" id="L79">                .anyRequest().authenticated()</span>
             )
-<span class="fc" id="L39">            .formLogin(form -&gt; form</span>
-<span class="fc" id="L40">                .loginPage(&quot;/auth/login&quot;)</span>
-<span class="fc" id="L41">                .loginProcessingUrl(&quot;/auth/login&quot;)</span>
-<span class="fc" id="L42">                .defaultSuccessUrl(&quot;/&quot;, true)</span>
-<span class="fc" id="L43">                .permitAll()</span>
+<span class="fc" id="L81">            .formLogin(form -&gt; form</span>
+<span class="fc" id="L82">                .loginPage(&quot;/auth/login&quot;)</span>
+<span class="fc" id="L83">                .loginProcessingUrl(&quot;/auth/login&quot;)</span>
+<span class="fc" id="L84">                .successHandler((req, res, authentication) -&gt; {</span>
+<span class="nc" id="L85">                    String token = jwtIssuer.issue(authentication.getName(),</span>
+<span class="nc" id="L86">                            authentication.getAuthorities().stream().toList());</span>
+
+<span class="nc" id="L88">                    Cookie cookie = new Cookie(&quot;ACCESS_TOKEN&quot;, token);</span>
+<span class="nc" id="L89">                    cookie.setHttpOnly(true);</span>
+<span class="nc" id="L90">                    cookie.setPath(&quot;/&quot;);</span>
+<span class="nc" id="L91">                    cookie.setMaxAge(3600); // 1h</span>
+
+<span class="nc" id="L93">                    res.addCookie(cookie);</span>
+<span class="nc" id="L94">                    res.sendRedirect(&quot;/ui/patients&quot;);</span>
+<span class="nc" id="L95">                })</span>
+<span class="fc" id="L96">                .failureUrl(&quot;/auth/login?error&quot;)</span>
+<span class="fc" id="L97">                .permitAll()</span>
             )
-<span class="fc" id="L45">            .logout(logout -&gt; logout</span>
-<span class="fc" id="L46">                .logoutUrl(&quot;/logout&quot;)</span>
-<span class="fc" id="L47">                .logoutSuccessUrl(&quot;/auth/login?logout&quot;)</span>
-<span class="fc" id="L48">                .permitAll()</span>
-            )
-<span class="fc" id="L50">            .exceptionHandling(e -&gt; e</span>
-<span class="fc" id="L51">                .accessDeniedPage(&quot;/access-denied&quot;)</span>
+<span class="fc" id="L99">            .logout(logout -&gt; logout</span>
+<span class="fc" id="L100">                .logoutUrl(&quot;/logout&quot;)</span>
+<span class="fc" id="L101">                .addLogoutHandler((req, res, auth) -&gt; {</span>
+<span class="nc" id="L102">                    Cookie cookie = new Cookie(&quot;ACCESS_TOKEN&quot;, &quot;&quot;);</span>
+<span class="nc" id="L103">                    cookie.setHttpOnly(true);</span>
+<span class="nc" id="L104">                    cookie.setPath(&quot;/&quot;);</span>
+<span class="nc" id="L105">                    cookie.setMaxAge(0);</span>
+<span class="nc" id="L106">                    res.addCookie(cookie);</span>
+<span class="nc" id="L107">                })</span>
+<span class="fc" id="L108">                .logoutSuccessUrl(&quot;/auth/login?logout&quot;)</span>
+<span class="fc" id="L109">                .permitAll()</span>
             );
-<span class="fc" id="L53">        return http.build();</span>
+<span class="fc" id="L111">        return http.build();</span>
     }
 
     /**
-     * passwordEncoder: Fournit un encodeur BCrypt pour les mots de passe.
+     * Bean {@link PasswordEncoder} basé sur l’algorithme BCrypt.
      *
-     * @return PasswordEncoder instance.
+     * @return un encodeur de mots de passe sécurisé
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
-<span class="fc" id="L63">        return new BCryptPasswordEncoder();</span>
+<span class="fc" id="L121">        return new BCryptPasswordEncoder();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

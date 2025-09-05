@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.medilabo.auth.config.SecurityConfigTest" time="0.144" tests="1" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.medilabo.auth.security.JwtIssuerTest" time="0.116" tests="3" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="22"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -67,5 +67,7 @@
     <property name="java.class.version" value="66.0"/>
     <property name="LOGGED_APPLICATION_NAME" value="[auth-service] "/>
   </properties>
-  <testcase name="shouldEncodePassword" classname="com.medilabo.auth.config.SecurityConfigTest" time="0.144"/>
+  <testcase name="shouldIssueValidJwtWithRoles" classname="com.medilabo.auth.security.JwtIssuerTest" time="0.111"/>
+  <testcase name="shouldThrowRuntimeExceptionWhenSecretIsInvalid" classname="com.medilabo.auth.security.JwtIssuerTest" time="0.001"/>
+  <testcase name="shouldIncludeMultipleRoles" classname="com.medilabo.auth.security.JwtIssuerTest" time="0.001"/>
 </testsuite>
