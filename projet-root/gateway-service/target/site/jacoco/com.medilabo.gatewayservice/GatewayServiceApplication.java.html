@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GatewayServiceApplication.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">gateway-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.gatewayservice</a> &gt; <span class="el_source">GatewayServiceApplication.java</span></div><h1>GatewayServiceApplication.java</h1><pre class="source lang-java linenums">package com.medilabo.gatewayservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.context.annotation.Bean;
+
+/**
+ * Application: com.medilabo.gatewayservice
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;GatewayServiceApplication&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Point d'entrée du microservice Gateway basé sur &lt;em&gt;Spring Cloud Gateway&lt;/em&gt;.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * Ce microservice agit comme un proxy inverse centralisé.  
+ * Il intercepte les requêtes entrantes et les redirige vers les microservices cibles
+ * (auth, patient, notes, risk, UI).
+ * &lt;/p&gt;
+ */
+@SpringBootApplication
+<span class="fc" id="L24">public class GatewayServiceApplication {</span>
+
+    /**
+     * Méthode principale qui démarre l'application Spring Boot.
+     *
+     * @param args paramètres de la ligne de commande
+     */
+    public static void main(String[] args) {
+<span class="nc" id="L32">        SpringApplication.run(GatewayServiceApplication.class, args);</span>
+<span class="nc" id="L33">    }</span>
+
+    /**
+     * Déclare et configure les routes du Gateway.
+     * &lt;p&gt;
+     * Les routes sont créées uniquement si la propriété
+     * &lt;code&gt;spring.cloud.gateway.enabled=true&lt;/code&gt; (ou si la propriété est absente,
+     * car &lt;code&gt;matchIfMissing=true&lt;/code&gt; est activé).  
+     * Cela permet de démarrer un contexte allégé pour les tests en désactivant le Gateway.
+     * &lt;/p&gt;
+     *
+     * &lt;h3&gt;Conventions définies :&lt;/h3&gt;
+     * &lt;ul&gt;
+     *   &lt;li&gt;&lt;b&gt;auth-service&lt;/b&gt; : &lt;code&gt;/auth/**&lt;/code&gt; → &lt;code&gt;lb://AUTH-SERVICE&lt;/code&gt;&lt;/li&gt;
+     *   &lt;li&gt;&lt;b&gt;patient-service&lt;/b&gt; : &lt;code&gt;/patients/**&lt;/code&gt; → &lt;code&gt;/**&lt;/code&gt; vers &lt;code&gt;lb://PATIENT-SERVICE&lt;/code&gt;&lt;/li&gt;
+     *   &lt;li&gt;&lt;b&gt;note-service&lt;/b&gt; : &lt;code&gt;/notes/**&lt;/code&gt; → &lt;code&gt;/**&lt;/code&gt; vers &lt;code&gt;lb://NOTE-SERVICE&lt;/code&gt;&lt;/li&gt;
+     *   &lt;li&gt;&lt;b&gt;risk-service&lt;/b&gt; : &lt;code&gt;/risk/**&lt;/code&gt; (ex. &lt;code&gt;/risk/assess/1&lt;/code&gt;)
+     *       → réécrit en &lt;code&gt;/assess/**&lt;/code&gt; pour &lt;code&gt;lb://RISK-ASSESSMENT-SERVICE&lt;/code&gt;&lt;/li&gt;
+     *   &lt;li&gt;&lt;b&gt;patient-ui-service&lt;/b&gt; : &lt;code&gt;/ui/**&lt;/code&gt; → &lt;code&gt;/**&lt;/code&gt; vers &lt;code&gt;lb://PATIENT-UI-SERVICE&lt;/code&gt;&lt;/li&gt;
+     * &lt;/ul&gt;
+     *
+     * @param builder le constructeur de routes fourni par Spring Cloud Gateway
+     * @return un {@link RouteLocator} contenant toutes les routes configurées
+     */
+    @Bean
+    @ConditionalOnProperty(value = &quot;spring.cloud.gateway.enabled&quot;, havingValue = &quot;true&quot;, matchIfMissing = true)
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+<span class="fc" id="L60">        return builder.routes()</span>
+            // Auth-service
+<span class="fc" id="L62">            .route(&quot;auth-service&quot;, r -&gt; r.path(&quot;/auth/**&quot;)</span>
+<span class="fc" id="L63">                .uri(&quot;lb://AUTH-SERVICE&quot;))</span>
+
+            // Patient-service
+<span class="fc" id="L66">            .route(&quot;patient-service&quot;, r -&gt; r.path(&quot;/patients/**&quot;)</span>
+<span class="fc" id="L67">                .filters(f -&gt; f.rewritePath(&quot;/patients/(?&lt;segment&gt;.*)&quot;, &quot;/${segment}&quot;))</span>
+<span class="fc" id="L68">                .uri(&quot;lb://PATIENT-SERVICE&quot;))</span>
+
+            // Note-service
+<span class="fc" id="L71">            .route(&quot;note-service&quot;, r -&gt; r.path(&quot;/notes/**&quot;)</span>
+<span class="fc" id="L72">                .filters(f -&gt; f.rewritePath(&quot;/notes/(?&lt;segment&gt;.*)&quot;, &quot;/${segment}&quot;))</span>
+<span class="fc" id="L73">                .uri(&quot;lb://NOTE-SERVICE&quot;))</span>
+
+            // Risk-assessment-service
+<span class="fc" id="L76">            .route(&quot;risk-service&quot;, r -&gt; r.path(&quot;/risk/**&quot;)</span>
+<span class="fc" id="L77">                .filters(f -&gt; f.rewritePath(&quot;/risk/(?&lt;segment&gt;.*)&quot;, &quot;/assess/${segment}&quot;))</span>
+<span class="fc" id="L78">                .uri(&quot;lb://RISK-ASSESSMENT-SERVICE&quot;))</span>
+
+            // Patient-ui-service
+<span class="fc" id="L81">            .route(&quot;patient-ui-service&quot;, r -&gt; r.path(&quot;/ui/**&quot;)</span>
+<span class="fc" id="L82">                .filters(f -&gt; f.rewritePath(&quot;/ui/(?&lt;segment&gt;.*)&quot;, &quot;/${segment}&quot;))</span>
+<span class="fc" id="L83">                .uri(&quot;lb://PATIENT-UI-SERVICE&quot;))</span>
+
+<span class="fc" id="L85">            .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

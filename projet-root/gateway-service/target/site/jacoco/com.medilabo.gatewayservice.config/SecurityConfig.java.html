@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">gateway-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.gatewayservice.config</a> &gt; <span class="el_source">SecurityConfig.java</span></div><h1>SecurityConfig.java</h1><pre class="source lang-java linenums">package com.medilabo.gatewayservice.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
+import java.net.URI;
+
+/**
+ * Application: com.medilabo.gatewayservice.config
+ * &lt;p&gt;
+ * Classe &lt;strong&gt;SecurityConfig&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Configure la sécurité (Spring Security WebFlux) du Gateway.
+ * &lt;/p&gt;
+ *
+ * &lt;h3&gt;Principes&lt;/h3&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;Le Gateway ne gère &lt;em&gt;pas&lt;/em&gt; de formulaire de login : la route &lt;code&gt;/auth/**&lt;/code&gt;
+ *       (gérée par &lt;em&gt;auth-service&lt;/em&gt;) est responsable de l’authentification.&lt;/li&gt;
+ *   &lt;li&gt;Les accès aux routes sont filtrés au bord (roles/permissions) avant de proxyfier les appels.&lt;/li&gt;
+ *   &lt;li&gt;CSRF est désactivé : le Gateway ne rend pas de pages ni de formulaires côté serveur.&lt;/li&gt;
+ *   &lt;li&gt;Non authentifié → redirection 303 vers &lt;code&gt;/auth/login&lt;/code&gt;.&lt;/li&gt;
+ *   &lt;li&gt;Accès refusé (rôle insuffisant) → redirection 303 vers &lt;code&gt;/access-denied&lt;/code&gt;.&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+@Configuration
+<span class="fc" id="L30">public class SecurityConfig {</span>
+
+    /**
+     * Chaîne de filtres de sécurité pour Spring Cloud Gateway.
+     *
+     * &lt;p&gt;&lt;strong&gt;Règles d’autorisation :&lt;/strong&gt;&lt;/p&gt;
+     * &lt;ul&gt;
+     *   &lt;li&gt;&lt;code&gt;/auth/**&lt;/code&gt; et &lt;code&gt;/access-denied&lt;/code&gt; : accès public.&lt;/li&gt;
+     *   &lt;li&gt;&lt;code&gt;/ui/**&lt;/code&gt; et &lt;code&gt;/patients/**&lt;/code&gt; : rôles &lt;code&gt;ORGANISATEUR&lt;/code&gt; ou &lt;code&gt;PRATICIEN&lt;/code&gt;.&lt;/li&gt;
+     *   &lt;li&gt;&lt;code&gt;/notes/**&lt;/code&gt; et &lt;code&gt;/risk/**&lt;/code&gt; : rôle &lt;code&gt;PRATICIEN&lt;/code&gt; uniquement.&lt;/li&gt;
+     *   &lt;li&gt;toute autre route : authentification requise.&lt;/li&gt;
+     * &lt;/ul&gt;
+     *
+     * &lt;p&gt;&lt;strong&gt;Gestion des erreurs :&lt;/strong&gt;&lt;/p&gt;
+     * &lt;ul&gt;
+     *   &lt;li&gt;Non authentifié : redirection 303 → &lt;code&gt;/auth/login&lt;/code&gt;.&lt;/li&gt;
+     *   &lt;li&gt;Accès refusé : redirection 303 → &lt;code&gt;/access-denied&lt;/code&gt;.&lt;/li&gt;
+     * &lt;/ul&gt;
+     *
+     * @param http l’API de configuration de la sécurité WebFlux
+     * @return la chaîne de filtres de sécurité
+     */
+    @Bean
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+<span class="fc" id="L54">        return http</span>
+<span class="fc" id="L55">            .authorizeExchange(exchanges -&gt; exchanges</span>
+<span class="fc" id="L56">                .pathMatchers(&quot;/auth/**&quot;, &quot;/access-denied&quot;).permitAll()</span>
+<span class="fc" id="L57">                .pathMatchers(&quot;/ui/**&quot;, &quot;/patients/**&quot;).hasAnyRole(&quot;ORGANISATEUR&quot;, &quot;PRATICIEN&quot;)</span>
+<span class="fc" id="L58">                .pathMatchers(&quot;/notes/**&quot;, &quot;/risk/**&quot;).hasRole(&quot;PRATICIEN&quot;)</span>
+<span class="fc" id="L59">                .anyExchange().authenticated()</span>
+            )
+<span class="fc" id="L61">            .exceptionHandling(e -&gt; e</span>
+<span class="fc" id="L62">                .authenticationEntryPoint((exchange, ex) -&gt; {</span>
+<span class="fc" id="L63">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
+<span class="fc" id="L64">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/auth/login&quot;));</span>
+<span class="fc" id="L65">                    return exchange.getResponse().setComplete();</span>
+                })
+<span class="fc" id="L67">                .accessDeniedHandler((exchange, denied) -&gt; {</span>
+<span class="fc" id="L68">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
+<span class="fc" id="L69">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/access-denied&quot;));</span>
+<span class="fc" id="L70">                    return exchange.getResponse().setComplete();</span>
+<span class="fc" id="L71">                })</span>
+            )
+<span class="fc" id="L73">            .csrf(ServerHttpSecurity.CsrfSpec::disable)</span>
+
+<span class="fc" id="L75">            .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
