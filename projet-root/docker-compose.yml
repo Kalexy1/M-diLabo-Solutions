@@ -64,6 +64,9 @@ services:
       - "8080:8080"
     depends_on:
       - patient-service
+      - auth-service
+    environment:                   
+      JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
     networks:
       - backend
 
@@ -99,13 +102,15 @@ services:
       context: ./auth-service
     container_name: auth-service
     ports:
-      - "8085:8080"
+      - "8085:8085"
     depends_on:
       - mysql
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/patientdb
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: admin.01234
+      JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
+ 
     networks:
       - backend
 
