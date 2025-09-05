@@ -5,11 +5,16 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Représente un patient dans l'application Patient UI.
+ * Application: com.medilabo.patientui.model
  * <p>
- * Cette entité est stockée dans une base de données relationnelle et affichée
- * avec ses notes médicales dans l'interface utilisateur.
- * Les notes sont récupérées dynamiquement via un microservice externe et ne sont pas stockées localement.
+ * Classe <strong>Patient</strong>.
+ * <br/>
+ * Rôle : Représente un patient dans le microservice <em>patient-ui-service</em>.
+ * </p>
+ * <p>
+ * Cette entité est stockée dans une base de données relationnelle côté UI,
+ * mais ses notes médicales sont récupérées dynamiquement depuis le microservice
+ * <em>note-service</em> et ne sont pas persistées localement.
  * </p>
  */
 @Entity
@@ -38,7 +43,7 @@ public class Patient {
     private LocalDate dateNaissance;
 
     /**
-     * Genre du patient (ex. : "M", "F").
+     * Genre du patient (exemple : {@code "M"} ou {@code "F"}).
      */
     private String genre;
 
@@ -55,92 +60,125 @@ public class Patient {
     /**
      * Liste des notes médicales du patient.
      * <p>
-     * Cette liste n’est pas persistée dans la base de données. Elle est renseignée dynamiquement
-     * depuis le microservice note-service.
+     * Cette propriété est marquée {@link Transient}, donc
+     * non persistée en base. Elle est alimentée dynamiquement
+     * via des appels au microservice <em>note-service</em>.
      * </p>
      */
     @Transient
     private List<Note> notes;
 
-    // Getters et setters
+    // --- Getters et setters ---
 
     /**
-     * @return l'identifiant du patient
+     * Retourne l’identifiant du patient.
+     *
+     * @return identifiant unique
      */
     public Long getId() { return id; }
 
     /**
-     * @param id l'identifiant du patient à définir
+     * Définit l’identifiant du patient.
+     *
+     * @param id identifiant unique
      */
     public void setId(Long id) { this.id = id; }
 
     /**
-     * @return le prénom du patient
+     * Retourne le prénom du patient.
+     *
+     * @return prénom
      */
     public String getPrenom() { return prenom; }
 
     /**
-     * @param prenom le prénom du patient à définir
+     * Définit le prénom du patient.
+     *
+     * @param prenom prénom
      */
     public void setPrenom(String prenom) { this.prenom = prenom; }
 
     /**
-     * @return le nom du patient
+     * Retourne le nom de famille du patient.
+     *
+     * @return nom
      */
     public String getNom() { return nom; }
 
     /**
-     * @param nom le nom du patient à définir
+     * Définit le nom de famille du patient.
+     *
+     * @param nom nom
      */
     public void setNom(String nom) { this.nom = nom; }
 
     /**
-     * @return la date de naissance du patient
+     * Retourne la date de naissance du patient.
+     *
+     * @return date de naissance
      */
     public LocalDate getDateNaissance() { return dateNaissance; }
 
     /**
-     * @param dateNaissance la date de naissance à définir
+     * Définit la date de naissance du patient.
+     *
+     * @param dateNaissance date de naissance
      */
     public void setDateNaissance(LocalDate dateNaissance) { this.dateNaissance = dateNaissance; }
 
     /**
-     * @return le genre du patient
+     * Retourne le genre du patient.
+     *
+     * @return genre
      */
     public String getGenre() { return genre; }
 
     /**
-     * @param genre le genre du patient à définir
+     * Définit le genre du patient.
+     *
+     * @param genre genre
      */
     public void setGenre(String genre) { this.genre = genre; }
 
     /**
-     * @return l'adresse du patient
+     * Retourne l’adresse postale du patient.
+     *
+     * @return adresse
      */
     public String getAdresse() { return adresse; }
 
     /**
-     * @param adresse l'adresse du patient à définir
+     * Définit l’adresse postale du patient.
+     *
+     * @param adresse adresse
      */
     public void setAdresse(String adresse) { this.adresse = adresse; }
 
     /**
-     * @return le numéro de téléphone du patient
+     * Retourne le numéro de téléphone du patient.
+     *
+     * @return téléphone
      */
     public String getTelephone() { return telephone; }
 
     /**
-     * @param telephone le numéro de téléphone à définir
+     * Définit le numéro de téléphone du patient.
+     *
+     * @param telephone téléphone
      */
     public void setTelephone(String telephone) { this.telephone = telephone; }
 
     /**
-     * @return la liste des notes médicales du patient
+     * Retourne la liste des notes médicales associées au patient.
+     *
+     * @return liste de notes (non persistée)
      */
     public List<Note> getNotes() { return notes; }
 
     /**
-     * @param notes la liste des notes à définir
+     * Définit la liste des notes médicales associées au patient.
+     *
+     * @param notes liste de notes (non persistée)
      */
     public void setNotes(List<Note> notes) { this.notes = notes; }
 }

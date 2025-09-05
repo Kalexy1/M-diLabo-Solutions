@@ -6,7 +6,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.5.0</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.medilabo</groupId>
 	<artifactId>patient-ui-service</artifactId>
@@ -91,39 +91,50 @@
 	</dependencies>
 
 	<build>
-		<plugins>
-			<plugin>
-			  <groupId>org.jacoco</groupId>
-			  <artifactId>jacoco-maven-plugin</artifactId>
-			  <version>0.8.11</version>
-			  <executions>
-			    <execution>
-			      <goals>
-			        <goal>prepare-agent</goal>
-			      </goals>
-			    </execution>
-			    <execution>
-			      <id>report</id>
-			      <phase>verify</phase>
-			      <goals>
-			        <goal>report</goal>
-			      </goals>
-			    </execution>
-			  </executions>
-			  <configuration>
-			    <excludes>
-			      <exclude>java/**</exclude>
-			      <exclude>jdk/**</exclude>
-			      <exclude>com/sun/**</exclude>
-			    </excludes>
-			  </configuration>
-			</plugin>
-
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-		</plugins>
+	  <plugins>
+	
+	    <plugin>
+	      <groupId>org.jacoco</groupId>
+	      <artifactId>jacoco-maven-plugin</artifactId>
+	      <version>0.8.12</version>
+	      <configuration>
+	        <propertyName>surefireArgLine</propertyName>
+	        <excludes>
+	          <exclude>java/**</exclude>
+	          <exclude>jdk/**</exclude>
+	          <exclude>com/sun/**</exclude>
+	        </excludes>
+	      </configuration>
+	      <executions>
+	        <execution>
+	          <id>prepare-agent</id>
+	          <phase>test-compile</phase>
+	          <goals><goal>prepare-agent</goal></goals>
+	        </execution>
+	        <execution>
+	          <id>report</id>
+	          <phase>test</phase>
+	          <goals><goal>report</goal></goals>
+	        </execution>
+	      </executions>
+	    </plugin>
+	
+	    <plugin>
+	      <groupId>org.apache.maven.plugins</groupId>
+	      <artifactId>maven-surefire-plugin</artifactId>
+	      <version>3.2.5</version>
+	      <configuration>
+	        <argLine>${surefireArgLine} -Dfile.encoding=UTF-8</argLine>
+	        <forkCount>1</forkCount>
+	        <reuseForks>true</reuseForks>
+	      </configuration>
+	    </plugin>
+	
+	    <plugin>
+	      <groupId>org.springframework.boot</groupId>
+	      <artifactId>spring-boot-maven-plugin</artifactId>
+	    </plugin>
+	  </plugins>
 	</build>
 
 </project>

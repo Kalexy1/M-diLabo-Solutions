@@ -8,37 +8,57 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Service chargé de la communication avec le microservice note-service.
+ * Application: com.medilabo.patientui.service
  * <p>
- * Permet de récupérer les notes d'un patient et d'en ajouter de nouvelles
- * via des appels HTTP REST.
+ * Classe <strong>NoteService</strong>.
+ * <br/>
+ * Rôle : Assure la communication entre le microservice <em>patient-ui-service</em>
+ * et le microservice <em>note-service</em> via des appels REST.
+ * </p>
+ * <p>
+ * Ce service est utilisé par les contrôleurs pour :
+ * <ul>
+ *   <li>Récupérer l’historique des notes d’un patient.</li>
+ *   <li>Ajouter une nouvelle note à un patient.</li>
+ * </ul>
+ * Les appels transitent par le <strong>Gateway</strong> pour assurer la centralisation.
  * </p>
  */
 @Service
 public class NoteService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     /**
-     * URL de base du microservice note-service.
+     * URL de base du microservice note-service exposé via la Gateway.
      */
-    private final String NOTE_SERVICE_URL = "http://note-service:8083/notes";
+    private static final String NOTE_SERVICE_URL = "http://gateway-service:8080/notes";
 
     /**
-     * Récupère les notes d’un patient à partir du microservice note-service.
+     * Constructeur avec injection de dépendance.
+     *
+     * @param restTemplate client HTTP utilisé pour effectuer les appels REST
+     */
+    public NoteService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    /**
+     * Récupère toutes les notes associées à un patient depuis le microservice note-service.
      *
      * @param patientId identifiant du patient
      * @return une liste de notes représentées sous forme de {@link Map} (clé/valeur)
      */
+    @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getNotesByPatientId(Long patientId) {
         return restTemplate.getForObject(NOTE_SERVICE_URL + "/patient/" + patientId, List.class);
     }
 
     /**
-     * Envoie une nouvelle note pour un patient au microservice note-service.
+     * Ajoute une nouvelle note pour un patient en appelant le microservice note-service.
      *
      * @param patientId identifiant du patient
-     * @param contenu   texte de la note à enregistrer
+     * @param contenu   contenu textuel de la note à enregistrer
      */
     public void ajouterNote(Long patientId, String contenu) {
         Map<String, Object> nouvelleNote = new HashMap<>();

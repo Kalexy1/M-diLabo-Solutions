@@ -8,17 +8,23 @@
     <h1>Ajouter un nouveau patient</h1>
 
     <form th:action="@{/patients}" th:object="${patient}" method="post">
+
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
         <div>
             <label for="prenom">Prénom :</label>
             <input type="text" id="prenom" th:field="*{prenom}" required pattern="^[A-Za-zÀ-ÿ \-']{2,}$" title="Le prénom doit contenir au moins 2 lettres." />
+            <div th:if="${#fields.hasErrors('prenom')}" th:errors="*{prenom}" style="color: red;"></div>
         </div>
         <div>
             <label for="nom">Nom :</label>
             <input type="text" id="nom" th:field="*{nom}" required pattern="^[A-Za-zÀ-ÿ \-']{2,}$" title="Le nom doit contenir au moins 2 lettres." />
+            <div th:if="${#fields.hasErrors('nom')}" th:errors="*{nom}" style="color: red;"></div>
         </div>
         <div>
             <label for="dateNaissance">Date de naissance :</label>
             <input type="date" id="dateNaissance" th:field="*{dateNaissance}" required max="9999-12-31" />
+            <div th:if="${#fields.hasErrors('dateNaissance')}" th:errors="*{dateNaissance}" style="color: red;"></div>
         </div>
         <div>
             <label for="genre">Genre :</label>
@@ -27,14 +33,15 @@
                 <option value="M">Homme</option>
                 <option value="F">Femme</option>
             </select>
+            <div th:if="${#fields.hasErrors('genre')}" th:errors="*{genre}" style="color: red;"></div>
         </div>
         <div>
             <label for="adresse">Adresse :</label>
-            <input type="text" id="adresse" th:field="*{adresse}" maxlength="255" required />
+            <input type="text" id="adresse" th:field="*{adresse}" maxlength="255" />
         </div>
         <div>
             <label for="telephone">Téléphone :</label>
-            <input type="tel" id="telephone" th:field="*{telephone}" required />
+            <input type="tel" id="telephone" th:field="*{telephone}" />
         </div>
         <div>
             <button type="submit">Enregistrer</button>

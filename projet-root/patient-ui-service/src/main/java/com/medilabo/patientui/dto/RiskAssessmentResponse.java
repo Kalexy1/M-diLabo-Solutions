@@ -1,13 +1,22 @@
 package com.medilabo.patientui.dto;
 
 /**
- * Objet de transfert de données (DTO) représentant la réponse du microservice
- * risk-assessment concernant le niveau de risque d'un patient.
+ * Application: com.medilabo.patientui.dto
+ * <p>
+ * Classe <strong>RiskAssessmentResponse</strong>.
+ * <br/>
+ * Rôle : Objet de transfert de données (DTO) représentant la réponse du microservice
+ * <em>risk-assessment-service</em> concernant l’évaluation du niveau de risque d’un patient.
+ * </p>
+ * <p>
+ * Cette classe est utilisée pour recevoir la réponse JSON du service d’évaluation des risques
+ * via la Gateway et l’exploiter dans le microservice <em>patient-ui-service</em>.
+ * </p>
  */
 public class RiskAssessmentResponse {
 
     /**
-     * Identifiant du patient.
+     * Identifiant unique du patient.
      */
     private Long patientId;
 
@@ -17,91 +26,114 @@ public class RiskAssessmentResponse {
     private String firstName;
 
     /**
-     * Nom du patient.
+     * Nom de famille du patient.
      */
     private String lastName;
 
     /**
-     * Âge du patient.
+     * Âge du patient (calculé côté risk-assessment).
      */
     private int age;
 
     /**
-     * Niveau de risque détecté pour le patient (par exemple : "Aucun risque", "Risque faible", etc.).
+     * Niveau de risque détecté pour le patient
+     * (par exemple : {@code None}, {@code Borderline}, {@code In Danger}, {@code Early onset}).
      */
     private String riskLevel;
 
     /**
-     * Constructeur sans argument requis pour la désérialisation JSON.
+     * Constructeur sans argument.
+     * <br/>
+     * Requis pour la désérialisation JSON par les frameworks (ex. Jackson).
      */
     public RiskAssessmentResponse() {
     }
 
     /**
-     * @return l'identifiant du patient
+     * Retourne l’identifiant du patient.
+     *
+     * @return identifiant du patient
      */
     public Long getPatientId() {
         return patientId;
     }
 
     /**
-     * @param patientId l'identifiant du patient à définir
+     * Définit l’identifiant du patient.
+     *
+     * @param patientId identifiant du patient
      */
     public void setPatientId(Long patientId) {
         this.patientId = patientId;
     }
 
     /**
-     * @return le prénom du patient
+     * Retourne le prénom du patient.
+     *
+     * @return prénom du patient
      */
     public String getFirstName() {
         return firstName;
     }
 
     /**
-     * @param firstName le prénom du patient à définir
+     * Définit le prénom du patient.
+     *
+     * @param firstName prénom du patient
      */
     public void setFirstName(String firstName) {
         this.firstName = firstName;
     }
 
     /**
-     * @return le nom du patient
+     * Retourne le nom du patient.
+     *
+     * @return nom du patient
      */
     public String getLastName() {
         return lastName;
     }
 
     /**
-     * @param lastName le nom du patient à définir
+     * Définit le nom du patient.
+     *
+     * @param lastName nom du patient
      */
     public void setLastName(String lastName) {
         this.lastName = lastName;
     }
 
     /**
-     * @return l'âge du patient
+     * Retourne l’âge du patient.
+     *
+     * @return âge du patient
      */
     public int getAge() {
         return age;
     }
 
     /**
-     * @param age l'âge du patient à définir
+     * Définit l’âge du patient.
+     *
+     * @param age âge du patient
      */
     public void setAge(int age) {
         this.age = age;
     }
 
     /**
-     * @return le niveau de risque détecté
+     * Retourne le niveau de risque détecté.
+     *
+     * @return niveau de risque
      */
     public String getRiskLevel() {
         return riskLevel;
     }
 
     /**
-     * @param riskLevel le niveau de risque à définir
+     * Définit le niveau de risque détecté.
+     *
+     * @param riskLevel niveau de risque
      */
     public void setRiskLevel(String riskLevel) {
         this.riskLevel = riskLevel;

@@ -1,21 +1,29 @@
 package com.medilabo.patientui.model;
 
 /**
- * Représente une note médicale associée à un patient.
+ * Application: com.medilabo.patientui.model
  * <p>
- * Cette classe est utilisée dans l'application front-end (patient-ui)
- * pour afficher les notes récupérées depuis le microservice note-service.
+ * Classe <strong>Note</strong>.
+ * <br/>
+ * Rôle : Représente une note médicale associée à un patient dans le
+ * microservice <em>patient-ui-service</em>.
+ * </p>
+ * <p>
+ * Cette classe n’est pas une entité persistée localement : elle sert
+ * uniquement de modèle pour afficher dans l’UI les données
+ * récupérées depuis le microservice <em>note-service</em>.
  * </p>
  */
 public class Note {
 
     /**
-     * Identifiant unique de la note (généré par MongoDB).
+     * Identifiant unique de la note (généré par MongoDB
+     * côté microservice note-service).
      */
     private String id;
 
     /**
-     * Identifiant du patient auquel la note est liée.
+     * Identifiant du patient auquel la note est associée.
      */
     private Long patientId;
 
@@ -24,35 +32,59 @@ public class Note {
      */
     private String contenu;
 
-    // Getters et setters
+    // --- Getters et setters ---
 
     /**
-     * @return l'identifiant de la note
+     * Retourne l’identifiant unique de la note.
+     *
+     * @return identifiant de la note
      */
-    public String getId() { return id; }
+    public String getId() {
+        return id;
+    }
 
     /**
-     * @param id l'identifiant de la note à définir
+     * Définit l’identifiant unique de la note.
+     *
+     * @param id identifiant de la note
      */
-    public void setId(String id) { this.id = id; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
     /**
-     * @return l'identifiant du patient associé
+     * Retourne l’identifiant du patient associé à la note.
+     *
+     * @return identifiant du patient
      */
-    public Long getPatientId() { return patientId; }
+    public Long getPatientId() {
+        return patientId;
+    }
 
     /**
-     * @param patientId l'identifiant du patient à associer à la note
+     * Définit l’identifiant du patient associé à la note.
+     *
+     * @param patientId identifiant du patient
      */
-    public void setPatientId(Long patientId) { this.patientId = patientId; }
+    public void setPatientId(Long patientId) {
+        this.patientId = patientId;
+    }
 
     /**
-     * @return le contenu de la note
+     * Retourne le contenu textuel de la note.
+     *
+     * @return contenu de la note
      */
-    public String getContenu() { return contenu; }
+    public String getContenu() {
+        return contenu;
+    }
 
     /**
-     * @param contenu le contenu textuel de la note à définir
+     * Définit le contenu textuel de la note.
+     *
+     * @param contenu contenu de la note
      */
-    public void setContenu(String contenu) { this.contenu = contenu; }
+    public void setContenu(String contenu) {
+        this.contenu = contenu;
+    }
 }

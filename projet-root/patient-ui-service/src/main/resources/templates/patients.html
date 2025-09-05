@@ -2,8 +2,8 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <head>
-  <title>Liste des patients</title>
   <meta charset="UTF-8">
+  <title>Liste des patients</title>
   <style>
     button.link {
       background: none;
@@ -18,14 +18,17 @@
 </head>
 <body>
 
-  <!-- Message de bienvenue -->
   <p>
     Bienvenue <span sec:authentication="name"></span> !
     <a th:href="@{/logout}">Se déconnecter</a>
   </p>
 
   <h1>Liste des patients</h1>
-  <a href="/patients/new">Ajouter un patient</a>
+
+  <div sec:authorize="hasRole('ORGANISATEUR')">
+    <a th:href="@{/patients/new}">Ajouter un patient</a>
+  </div>
+
   <table border="1">
     <thead>
       <tr>
@@ -50,31 +53,40 @@
         <td th:text="${p.telephone}"></td>
 
         <td>
-          <form th:action="@{'/patients/edit/' + ${p.id}}" method="get" style="display:inline;">
-            <button class="link" type="submit">Modifier</button>
-          </form>
-          <form th:action="@{'/patients/delete/' + ${p.id}}" method="get" style="display:inline;"
-                onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce patient ?');">
-            <button class="link" type="submit">Supprimer</button>
-          </form>
-          <form th:action="@{'/patients/' + ${p.id} + '/report/pdf'}" method="get" style="display:inline;">
-            <button class="link" type="submit">Télécharger le PDF</button>
-          </form>
+          <div sec:authorize="hasRole('ORGANISATEUR')">
+            <form th:action="@{'/patients/edit/' + ${p.id}}" method="get" style="display:inline;">
+              <button class="link" type="submit">Modifier</button>
+            </form>
+            <form th:action="@{'/patients/delete/' + ${p.id}}" method="post" style="display:inline;"
+                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce patient ?');">
+
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <button class="link" type="submit">Supprimer</button>
+            </form>
+            <form th:action="@{'/patients/' + ${p.id} + '/report/pdf'}" method="get" style="display:inline;">
+              <button class="link" type="submit">Télécharger le PDF</button>
+            </form>
+          </div>
         </td>
 
         <td>
-          <form th:action="@{'/patients/' + ${p.id} + '/notes'}" method="get">
-            <button class="link" type="submit">Voir les notes</button>
-          </form>
+          <div sec:authorize="hasRole('PRATICIEN')">
+            <form th:action="@{'/patients/' + ${p.id} + '/notes'}" method="get">
+              <button class="link" type="submit">Voir les notes</button>
+            </form>
+          </div>
         </td>
 
         <td>
-          <form th:action="@{'/patients/' + ${p.id} + '/risk'}" method="get">
-            <button class="link" type="submit">Voir le rapport</button>
-          </form>
+          <div sec:authorize="hasRole('PRATICIEN')">
+            <form th:action="@{'/patients/' + ${p.id} + '/risk'}" method="get">
+              <button class="link" type="submit">Voir le rapport</button>
+            </form>
+          </div>
         </td>
       </tr>
     </tbody>
   </table>
+
 </body>
 </html>

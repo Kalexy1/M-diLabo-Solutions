@@ -1,17 +1,14 @@
 package com.medilabo.patientui.controller;
 
-import com.medilabo.patientui.model.Patient;
-import com.medilabo.patientui.repository.PatientRepository;
-import com.medilabo.patientui.service.NoteService;
 import com.medilabo.patientui.dto.RiskAssessmentResponse;
-
+import com.medilabo.patientui.model.Patient;
+import com.medilabo.patientui.service.NoteService;
+import com.medilabo.patientui.service.PatientService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,20 +18,20 @@ import java.time.LocalDate;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(PatientController.class)
-@WithMockUser(username = "testuser", roles = {"ORGANISATEUR"})
 class PatientControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private PatientRepository patientRepository;
+    private PatientService patientService;
 
     @MockBean
     private NoteService noteService;
@@ -60,8 +57,9 @@ class PatientControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = {"ORGANISATEUR"})
     void shouldDisplayPatientList() throws Exception {
-        when(patientRepository.findAll()).thenReturn(List.of(patient));
+        when(patientService.findAll()).thenReturn(List.of(patient));
         when(noteService.getNotesByPatientId(1L)).thenReturn(Collections.emptyList());
         when(restTemplate.getForObject(anyString(), eq(RiskAssessmentResponse.class))).thenReturn(risk);
 
@@ -72,6 +70,7 @@ class PatientControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = {"ORGANISATEUR"})
     void shouldShowAddForm() throws Exception {
         mockMvc.perform(get("/patients/new"))
                 .andExpect(status().isOk())
@@ -80,6 +79,7 @@ class PatientControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = {"ORGANISATEUR"})
     void shouldCreatePatient() throws Exception {
         mockMvc.perform(post("/patients")
                         .param("nom", "Dupont")
@@ -92,8 +92,9 @@ class PatientControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = {"ORGANISATEUR"})
     void shouldShowEditForm() throws Exception {
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(patientService.findById(1L)).thenReturn(Optional.of(patient));
 
         mockMvc.perform(get("/patients/edit/1"))
                 .andExpect(status().isOk())
@@ -102,6 +103,7 @@ class PatientControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = {"ORGANISATEUR"})
     void shouldUpdatePatient() throws Exception {
         mockMvc.perform(post("/patients/update")
                         .param("id", "1")
@@ -115,8 +117,9 @@ class PatientControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = {"PRATICIEN"})
     void shouldShowPatientNotes() throws Exception {
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(patientService.findById(1L)).thenReturn(Optional.of(patient));
         when(noteService.getNotesByPatientId(1L)).thenReturn(List.of(Map.of("contenu", "note")));
 
         mockMvc.perform(get("/patients/1/notes"))
@@ -126,8 +129,9 @@ class PatientControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = {"PRATICIEN"})
     void shouldShowRiskReport() throws Exception {
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(patientService.findById(1L)).thenReturn(Optional.of(patient));
         when(restTemplate.getForObject(anyString(), eq(RiskAssessmentResponse.class))).thenReturn(risk);
 
         mockMvc.perform(get("/patients/1/risk"))
@@ -137,16 +141,18 @@ class PatientControllerTest {
     }
 
     @Test
-    void shouldDeletePatient() throws Exception {
-        mockMvc.perform(get("/patients/delete/1"))
+    @WithMockUser(roles = {"ORGANISATEUR"})
+    void shouldDeletePatient_postWithCsrf() throws Exception {
+        mockMvc.perform(post("/patients/delete/1").with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/patients"));
 
-        verify(patientRepository).deleteById(1L);
+        verify(patientService).deleteById(1L);
     }
 
     @Test
-    void shouldAddNote() throws Exception {
+    @WithMockUser(roles = {"PRATICIEN"})
+    void shouldAddNote_postWithCsrf() throws Exception {
         mockMvc.perform(post("/notes")
                         .param("patientId", "1")
                         .param("contenu", "note test")
@@ -158,13 +164,14 @@ class PatientControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = {"PRATICIEN"})
     void shouldGeneratePdfReport() throws Exception {
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(patientService.findById(1L)).thenReturn(Optional.of(patient));
         when(restTemplate.getForObject(anyString(), eq(RiskAssessmentResponse.class))).thenReturn(risk);
 
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        PatientController controller = new PatientController(patientRepository, noteService, restTemplate);
+        PatientController controller = new PatientController(patientService, noteService, restTemplate);
         controller.downloadPdfReport(1L, response);
 
         assertThat(response.getStatus()).isEqualTo(200);
