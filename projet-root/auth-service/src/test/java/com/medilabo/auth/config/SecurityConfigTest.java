@@ -10,7 +10,7 @@ class SecurityConfigTest {
 
     @Test
     void shouldEncodePassword() {
-        SecurityConfig config = new SecurityConfig();
+        SecurityConfig config = new SecurityConfig(null);
         PasswordEncoder encoder = config.passwordEncoder();
         String encoded = encoder.encode("pass");
 
