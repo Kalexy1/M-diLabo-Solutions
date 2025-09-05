@@ -1,63 +1,71 @@
 package com.medilabo.gatewayservice.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
 import java.net.URI;
 
 /**
- * Application: com.medilabo.gatewayservice.config
+ * Configuration de la sécurité pour le microservice {@code gateway-service}.
+ *
  * <p>
- * Classe <strong>SecurityConfig</strong>.
- * <br/>
- * Rôle : Configure la sécurité (Spring Security WebFlux) du Gateway.
+ * Ce gateway agit comme proxy sécurisé devant les autres microservices.  
+ * Il valide les JWT signés émis par l’{@code auth-service} et applique les
+ * règles d’accès en fonction des rôles contenus dans les jetons.
  * </p>
  *
- * <h3>Principes</h3>
+ * <h3>Fonctionnalités principales</h3>
  * <ul>
- *   <li>Le Gateway ne gère <em>pas</em> de formulaire de login : la route <code>/auth/**</code>
- *       (gérée par <em>auth-service</em>) est responsable de l’authentification.</li>
- *   <li>Les accès aux routes sont filtrés au bord (roles/permissions) avant de proxyfier les appels.</li>
- *   <li>CSRF est désactivé : le Gateway ne rend pas de pages ni de formulaires côté serveur.</li>
- *   <li>Non authentifié → redirection 303 vers <code>/auth/login</code>.</li>
- *   <li>Accès refusé (rôle insuffisant) → redirection 303 vers <code>/access-denied</code>.</li>
+ *   <li>Validation des jetons JWT (algorithme HS256) avec la clé secrète partagée
+ *       définie par la variable d’environnement {@code JWT_SECRET}.</li>
+ *   <li>Application de règles de sécurité par rôle :
+ *     <ul>
+ *       <li>{@code /auth/**}, {@code /access-denied} : accès public.</li>
+ *       <li>{@code /ui/**}, {@code /patients/**} : accès réservé aux rôles {@code ORGANISATEUR} ou {@code PRATICIEN}.</li>
+ *       <li>{@code /notes/**}, {@code /risk/**} : accès réservé au rôle {@code PRATICIEN}.</li>
+ *       <li>Toutes les autres routes : authentification requise.</li>
+ *     </ul>
+ *   </li>
+ *   <li>Redirection vers {@code /auth/login} si l’utilisateur n’est pas authentifié.</li>
+ *   <li>Redirection vers {@code /access-denied} si l’utilisateur est authentifié
+ *       mais ne possède pas les rôles requis.</li>
+ *   <li>Désactivation du CSRF (le gateway ne sert pas de formulaires).</li>
  * </ul>
  */
 @Configuration
 public class SecurityConfig {
 
     /**
-     * Chaîne de filtres de sécurité pour Spring Cloud Gateway.
+     * Définit la chaîne de filtres de sécurité pour Spring Security WebFlux.
      *
-     * <p><strong>Règles d’autorisation :</strong></p>
-     * <ul>
-     *   <li><code>/auth/**</code> et <code>/access-denied</code> : accès public.</li>
-     *   <li><code>/ui/**</code> et <code>/patients/**</code> : rôles <code>ORGANISATEUR</code> ou <code>PRATICIEN</code>.</li>
-     *   <li><code>/notes/**</code> et <code>/risk/**</code> : rôle <code>PRATICIEN</code> uniquement.</li>
-     *   <li>toute autre route : authentification requise.</li>
-     * </ul>
-     *
-     * <p><strong>Gestion des erreurs :</strong></p>
-     * <ul>
-     *   <li>Non authentifié : redirection 303 → <code>/auth/login</code>.</li>
-     *   <li>Accès refusé : redirection 303 → <code>/access-denied</code>.</li>
-     * </ul>
-     *
-     * @param http l’API de configuration de la sécurité WebFlux
-     * @return la chaîne de filtres de sécurité
+     * @param http l’API de configuration de la sécurité réactive
+     * @return la configuration complète du filtre de sécurité
      */
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
-            .authorizeExchange(exchanges -> exchanges
+            .authorizeExchange(ex -> ex
                 .pathMatchers("/auth/**", "/access-denied").permitAll()
                 .pathMatchers("/ui/**", "/patients/**").hasAnyRole("ORGANISATEUR", "PRATICIEN")
                 .pathMatchers("/notes/**", "/risk/**").hasRole("PRATICIEN")
                 .anyExchange().authenticated()
             )
+            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(ctx -> {
+                var roles = (java.util.List<String>) ctx.getClaims().getOrDefault("roles", java.util.List.of());
+                var auths = roles.stream()
+                        .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
+                        .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
+                        .toList();
+                return reactor.core.publisher.Mono.just(
+                        new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                                ctx.getSubject(), "n/a", auths));
+            })))
             .exceptionHandling(e -> e
                 .authenticationEntryPoint((exchange, ex) -> {
                     exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);
@@ -71,7 +79,24 @@ public class SecurityConfig {
                 })
             )
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
-
             .build();
+    }
+
+    /**
+     * Déclare un décodeur de jetons JWT pour l’algorithme HS256.
+     *
+     * <p>
+     * Le décodeur est basé sur la clé secrète définie par la propriété
+     * {@code JWT_SECRET}. Cette clé doit être identique à celle utilisée
+     * par l’{@code auth-service} pour émettre les jetons.
+     * </p>
+     *
+     * @param secret la clé secrète injectée depuis {@code JWT_SECRET}
+     * @return un décodeur JWT réactif basé sur HS256
+     */
+    @Bean
+    public ReactiveJwtDecoder jwtDecoder(@Value("${JWT_SECRET}") String secret) {
+        return NimbusReactiveJwtDecoder.withSecretKey(
+                new javax.crypto.spec.SecretKeySpec(secret.getBytes(), "HmacSHA256")).build();
     }
 }
