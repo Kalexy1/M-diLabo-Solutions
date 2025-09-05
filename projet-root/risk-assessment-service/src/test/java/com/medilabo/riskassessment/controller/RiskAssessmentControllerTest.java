@@ -1,21 +1,27 @@
 package com.medilabo.riskassessment.controller;
 
+import com.medilabo.riskassessment.config.RiskAssessmentServiceSecurityConfig;
 import com.medilabo.riskassessment.dto.RiskAssessmentResponse;
 import com.medilabo.riskassessment.service.RiskAssessmentService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(RiskAssessmentController.class)
+@AutoConfigureMockMvc(addFilters = true)
+@Import(RiskAssessmentServiceSecurityConfig.class)
 class RiskAssessmentControllerTest {
 
     @Autowired
@@ -25,36 +31,32 @@ class RiskAssessmentControllerTest {
     private RiskAssessmentService riskService;
 
     @Test
-    void shouldReturnRiskAssessmentResponse() throws Exception {
-        Long patientId = 1L;
-        RiskAssessmentResponse response = new RiskAssessmentResponse();
-        response.setPatientId(patientId);
-        response.setAge(40);
-        response.setRiskLevel("None");
+    @DisplayName("Doit retourner 200 avec rôle PRATICIEN")
+    @WithMockUser(username = "praticien", roles = "PRATICIEN")
+    void shouldReturnRiskWithAuthorizedUser() throws Exception {
+        RiskAssessmentResponse response =
+                new RiskAssessmentResponse(1L, "John", "Doe", 50, "In Danger");
 
-        when(riskService.assessRiskDetailed(patientId)).thenReturn(response);
+        Mockito.when(riskService.assessRiskDetailed(eq(1L))).thenReturn(response);
 
-        mockMvc.perform(get("/assess/{patientId}", patientId)
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/assess/1").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.patientId").value(patientId))
-                .andExpect(jsonPath("$.age").value(40))
-                .andExpect(jsonPath("$.riskLevel").value("None"));
+                .andExpect(jsonPath("$.firstName").value("John"))
+                .andExpect(jsonPath("$.riskLevel").value("In Danger"));
     }
-    
+
     @Test
-    void shouldReturnRiskLevelEarlyOnset() throws Exception {
-        Long patientId = 2L;
-        RiskAssessmentResponse response = new RiskAssessmentResponse();
-        response.setPatientId(patientId);
-        response.setAge(55);
-        response.setRiskLevel("Early onset");
+    @DisplayName("Doit refuser l’accès sans authentification")
+    void shouldRejectRequestWithoutAuth() throws Exception {
+        mockMvc.perform(get("/assess/1"))
+                .andExpect(status().isUnauthorized());
+    }
 
-        when(riskService.assessRiskDetailed(patientId)).thenReturn(response);
-
-        mockMvc.perform(get("/assess/{patientId}", patientId)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.riskLevel").value("Early onset"));
+    @Test
+    @DisplayName("Doit refuser l’accès avec mauvais rôle")
+    @WithMockUser(username = "user", roles = "ORGANISATEUR")
+    void shouldRejectAccessForWrongRole() throws Exception {
+        mockMvc.perform(get("/assess/1"))
+                .andExpect(status().isForbidden());
     }
 }

@@ -4,13 +4,19 @@ import com.medilabo.riskassessment.dto.RiskAssessmentResponse;
 import com.medilabo.riskassessment.service.RiskAssessmentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Contrôleur REST du microservice Risk Assessment.
+ * Application: com.medilabo.riskassessment.controller
  * <p>
- * Fournit un endpoint pour évaluer le niveau de risque de diabète d’un patient
- * à partir de son identifiant.
+ * Classe <strong>RiskAssessmentController</strong>.
+ * <br/>
+ * Rôle : Expose les endpoints REST du microservice <em>risk-assessment-service</em>.
+ * </p>
+ * <p>
+ * Ce contrôleur permet d’évaluer le risque de diabète d’un patient
+ * en interrogeant le service métier {@link RiskAssessmentService}.
  * </p>
  */
 @RestController
@@ -21,11 +27,18 @@ public class RiskAssessmentController {
     private RiskAssessmentService riskService;
 
     /**
-     * Évalue le risque de diabète d’un patient donné en appelant le service métier.
+     * Évalue le risque de diabète d’un patient en fonction :
+     * <ul>
+     *   <li>de ses données personnelles (âge, sexe) récupérées depuis <em>patient-service</em>,</li>
+     *   <li>de son historique médical (notes) récupéré depuis <em>note-service</em>.</li>
+     * </ul>
+     * Accessible uniquement aux utilisateurs ayant le rôle <b>PRATICIEN</b>.
      *
      * @param patientId identifiant du patient à analyser
-     * @return un objet {@link RiskAssessmentResponse} contenant le niveau de risque et les informations patient
+     * @return une réponse HTTP {@link ResponseEntity} contenant un objet
+     *         {@link RiskAssessmentResponse} avec le niveau de risque évalué
      */
+    @PreAuthorize("hasRole('PRATICIEN')")
     @GetMapping("/{patientId}")
     public ResponseEntity<RiskAssessmentResponse> getRisk(@PathVariable Long patientId) {
         RiskAssessmentResponse response = riskService.assessRiskDetailed(patientId);

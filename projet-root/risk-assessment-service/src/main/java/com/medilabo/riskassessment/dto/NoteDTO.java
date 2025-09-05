@@ -1,16 +1,19 @@
 package com.medilabo.riskassessment.dto;
 
 /**
- * DTO représentant une note médicale issue du microservice note-service.
+ * Application: com.medilabo.riskassessment.dto
  * <p>
- * Utilisé par le microservice risk-assessment pour analyser le contenu des notes
- * et déterminer le niveau de risque de diabète du patient.
+ * Classe <strong>NoteDTO</strong>.
+ * <br/>
+ * Rôle : Représente une note médicale issue du microservice <em>note-service</em>,
+ * utilisée par le microservice <em>risk-assessment-service</em> pour analyser
+ * le contenu médical et déterminer le niveau de risque de diabète d’un patient.
  * </p>
  */
 public class NoteDTO {
 
     /**
-     * Identifiant unique de la note (généré par MongoDB).
+     * Identifiant unique de la note (généré par MongoDB côté note-service).
      */
     private String id;
 
@@ -28,15 +31,15 @@ public class NoteDTO {
      * Constructeur par défaut requis pour la désérialisation JSON.
      */
     public NoteDTO() {
-        // Constructeur par défaut
+        // Constructeur vide requis par les frameworks (Jackson, etc.)
     }
 
     /**
      * Constructeur complet.
      *
-     * @param id l'identifiant de la note
-     * @param patientId l'identifiant du patient
-     * @param contenu le texte de la note
+     * @param id        identifiant unique de la note
+     * @param patientId identifiant du patient associé
+     * @param contenu   texte de la note médicale
      */
     public NoteDTO(String id, Integer patientId, String contenu) {
         this.id = id;
@@ -45,42 +48,63 @@ public class NoteDTO {
     }
 
     /**
-     * @return l'identifiant de la note
+     * Constructeur simplifié pour créer une note uniquement à partir de son contenu.
+     *
+     * @param contenu texte de la note médicale
+     */
+    public NoteDTO(String contenu) {
+        this.contenu = contenu;
+    }
+
+    /**
+     * Retourne l’identifiant unique de la note.
+     *
+     * @return identifiant de la note
      */
     public String getId() {
         return id;
     }
 
     /**
-     * @param id l'identifiant de la note à définir
+     * Définit l’identifiant unique de la note.
+     *
+     * @param id identifiant de la note
      */
     public void setId(String id) {
         this.id = id;
     }
 
     /**
-     * @return l'identifiant du patient
+     * Retourne l’identifiant du patient associé à cette note.
+     *
+     * @return identifiant du patient
      */
     public Integer getPatientId() {
         return patientId;
     }
 
     /**
-     * @param patientId l'identifiant du patient à définir
+     * Définit l’identifiant du patient associé à cette note.
+     *
+     * @param patientId identifiant du patient
      */
     public void setPatientId(Integer patientId) {
         this.patientId = patientId;
     }
 
     /**
-     * @return le contenu textuel de la note
+     * Retourne le contenu textuel de la note.
+     *
+     * @return texte de la note médicale
      */
     public String getContenu() {
         return contenu;
     }
 
     /**
-     * @param contenu le texte de la note à définir
+     * Définit le contenu textuel de la note.
+     *
+     * @param contenu texte de la note médicale
      */
     public void setContenu(String contenu) {
         this.contenu = contenu;

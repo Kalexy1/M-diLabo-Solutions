@@ -3,10 +3,19 @@ package com.medilabo.riskassessment.dto;
 import java.time.LocalDate;
 
 /**
- * DTO représentant un patient, utilisé pour transférer les données
- * depuis le microservice patient-service vers le microservice risk-assessment.
+ * Application: com.medilabo.riskassessment.dto
  * <p>
- * Ces informations sont utilisées pour calculer l'âge du patient et déterminer le niveau de risque.
+ * Classe <strong>PatientDTO</strong>.
+ * <br/>
+ * Rôle : Représente un patient transféré depuis le microservice <em>patient-service</em>
+ * vers le microservice <em>risk-assessment-service</em>.
+ * </p>
+ * <p>
+ * Les informations contenues dans ce DTO permettent notamment de :
+ * <ul>
+ *   <li>Calculer l’âge du patient à partir de sa {@link #dateNaissance}.</li>
+ *   <li>Déterminer son niveau de risque de diabète en combinaison avec ses notes médicales.</li>
+ * </ul>
  * </p>
  */
 public class PatientDTO {
@@ -22,12 +31,12 @@ public class PatientDTO {
     private String prenom;
 
     /**
-     * Nom du patient.
+     * Nom de famille du patient.
      */
     private String nom;
 
     /**
-     * Genre du patient (ex. : "M", "F").
+     * Genre du patient (par exemple : {@code "M"} ou {@code "F"}).
      */
     private String genre;
 
@@ -37,72 +46,117 @@ public class PatientDTO {
     private LocalDate dateNaissance;
 
     /**
-     * @return l'identifiant du patient
+     * Retourne l’identifiant du patient.
+     *
+     * @return identifiant unique du patient
      */
     public Long getId() {
         return id;
     }
 
     /**
-     * @param id l'identifiant du patient à définir
+     * Définit l’identifiant du patient.
+     *
+     * @param id identifiant unique à définir
      */
     public void setId(Long id) {
         this.id = id;
     }
 
     /**
-     * @return le prénom du patient
+     * Retourne le prénom du patient.
+     *
+     * @return prénom du patient
      */
     public String getPrenom() {
         return prenom;
     }
 
     /**
-     * @param prenom le prénom du patient à définir
+     * Définit le prénom du patient.
+     *
+     * @param prenom prénom à définir
      */
     public void setPrenom(String prenom) {
         this.prenom = prenom;
     }
 
     /**
-     * @return le nom du patient
+     * Retourne le nom de famille du patient.
+     *
+     * @return nom du patient
      */
     public String getNom() {
         return nom;
     }
 
     /**
-     * @param nom le nom du patient à définir
+     * Définit le nom de famille du patient.
+     *
+     * @param nom nom à définir
      */
     public void setNom(String nom) {
         this.nom = nom;
     }
 
     /**
-     * @return le genre du patient
+     * Retourne le genre du patient.
+     *
+     * @return genre du patient
      */
     public String getGenre() {
         return genre;
     }
 
     /**
-     * @param genre le genre du patient à définir
+     * Définit le genre du patient.
+     *
+     * @param genre genre à définir
      */
     public void setGenre(String genre) {
         this.genre = genre;
     }
 
     /**
-     * @return la date de naissance du patient
+     * Retourne la date de naissance du patient.
+     *
+     * @return date de naissance
      */
     public LocalDate getDateNaissance() {
         return dateNaissance;
     }
 
     /**
-     * @param dateNaissance la date de naissance à définir
+     * Définit la date de naissance du patient.
+     *
+     * @param dateNaissance date de naissance à définir
      */
     public void setDateNaissance(LocalDate dateNaissance) {
         this.dateNaissance = dateNaissance;
+    }
+
+    /**
+     * Constructeur complet.
+     *
+     * @param id            identifiant unique du patient
+     * @param prenom        prénom du patient
+     * @param nom           nom de famille du patient
+     * @param dateNaissance date de naissance du patient
+     * @param genre         genre du patient
+     */
+    public PatientDTO(Long id, String prenom, String nom, LocalDate dateNaissance, String genre) {
+        this.id = id;
+        this.prenom = prenom;
+        this.nom = nom;
+        this.dateNaissance = dateNaissance;
+        this.genre = genre;
+    }
+
+    /**
+     * Constructeur sans arguments.
+     * <br/>
+     * Requis pour la désérialisation JSON par les frameworks comme Jackson.
+     */
+    public PatientDTO() {
     }
 }
