@@ -1,58 +1,64 @@
 package com.medilabo.noteservice.controller;
 
 import com.medilabo.noteservice.model.Note;
-import com.medilabo.noteservice.repository.NoteRepository;
+import com.medilabo.noteservice.service.NoteService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
- * Contrôleur REST pour la gestion des notes médicales des patients.
+ * Application: com.medilabo.noteservice.controller
  * <p>
- * Ce contrôleur permet de récupérer les notes associées à un patient
- * et d'en ajouter de nouvelles.
+ * Classe <strong>NoteController</strong>.
+ * <br/>
+ * Rôle : Contrôleur REST pour la gestion des notes médicales des patients.
+ * Accessible uniquement aux praticiens.
  * </p>
- * <p>
- * Toutes les routes sont accessibles sous le préfixe <code>/notes</code>.
- * </p>
- * 
- * @author [Ton Nom]
- * @version 1.0
  */
 @RestController
 @RequestMapping("/notes")
 public class NoteController {
 
-    private final NoteRepository repository;
+    private final NoteService noteService;
 
     /**
-     * Constructeur injectant le {@link NoteRepository}.
+     * Constructeur avec injection du service métier.
      *
-     * @param repository le repository de gestion des notes
+     * @param noteService service de gestion des notes
      */
-    public NoteController(NoteRepository repository) {
-        this.repository = repository;
+    public NoteController(NoteService noteService) {
+        this.noteService = noteService;
     }
 
     /**
-     * Récupère toutes les notes liées à un patient donné.
+     * Récupère toutes les notes associées à un patient.
      *
-     * @param patientId l'identifiant du patient
-     * @return une liste des notes du patient
+     * @param patientId identifiant du patient
+     * @return liste des notes ou 204 No Content si aucune note
      */
+    @PreAuthorize("hasRole('PRATICIEN')")
     @GetMapping("/patient/{patientId}")
-    public List<Note> getNotesByPatient(@PathVariable Integer patientId) {
-        return repository.findByPatientId(patientId);
+    public ResponseEntity<List<Note>> getNotesByPatient(@PathVariable Integer patientId) {
+        List<Note> notes = noteService.getNotesByPatientId(patientId);
+        if (notes.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(notes);
     }
 
     /**
-     * Enregistre une nouvelle note médicale pour un patient.
+     * Ajoute une nouvelle note pour un patient.
      *
-     * @param note la note à ajouter
-     * @return la note enregistrée
+     * @param note objet Note à ajouter
+     * @return la note créée avec code HTTP 201 Created
      */
+    @PreAuthorize("hasRole('PRATICIEN')")
     @PostMapping
-    public Note addNote(@RequestBody Note note) {
-        return repository.save(note);
+    public ResponseEntity<Note> addNote(@RequestBody Note note) {
+        Note savedNote = noteService.addNote(note);
+        return new ResponseEntity<>(savedNote, HttpStatus.CREATED);
     }
 }

@@ -2,12 +2,18 @@ package com.medilabo.noteservice.repository;
 
 import com.medilabo.noteservice.model.Note;
 import org.springframework.data.mongodb.repository.MongoRepository;
+
 import java.util.List;
 
 /**
- * Interface de repository pour l'accès aux données des {@link Note} dans la base MongoDB.
+ * Application: com.medilabo.noteservice.repository
  * <p>
- * Hérite de {@link MongoRepository} pour fournir les opérations CRUD de base.
+ * Interface <strong>NoteRepository</strong>.
+ * <br/>
+ * Rôle : Fournit les opérations CRUD et les requêtes spécifiques sur les notes.
+ * </p>
+ * <p>
+ * Hérite de {@link MongoRepository} pour l'accès à MongoDB.
  * </p>
  */
 public interface NoteRepository extends MongoRepository<Note, String> {

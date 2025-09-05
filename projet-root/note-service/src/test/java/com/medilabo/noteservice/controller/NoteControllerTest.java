@@ -1,64 +1,65 @@
 package com.medilabo.noteservice.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.medilabo.noteservice.model.Note;
-import com.medilabo.noteservice.repository.NoteRepository;
-import org.junit.jupiter.api.BeforeEach;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.medilabo.noteservice.model.Note;
+import com.medilabo.noteservice.service.NoteService;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@WebMvcTest(NoteController.class)
+@Import(com.medilabo.noteservice.config.NoteServiceSecurityConfig.class)
 class NoteControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private NoteRepository repository;
+    @MockBean
+    private NoteService noteService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Test
+    @WithMockUser(roles = "PRATICIEN")
+    void getNotesByPatient_shouldReturnList() throws Exception {
+        Mockito.when(noteService.getNotesByPatientId(1)).thenReturn(List.of(new Note()));
 
-    private Note note;
-
-    @BeforeEach
-    void setup() {
-        repository.deleteAll(); // Nettoyage
-        Note newNote = new Note();
-        newNote.setPatientId(42);
-        newNote.setContenu("Microalbumine détectée");
-        note = repository.save(newNote); // On garde la version avec ID
+        mockMvc.perform(get("/notes/patient/1"))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void testFindByPatientId() throws Exception {
-        mockMvc.perform(get("/notes/patient/" + note.getPatientId()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].contenu").value("Microalbumine détectée"));
+    @WithMockUser(roles = "PRATICIEN")
+    void getNotesByPatient_shouldReturnNoContent() throws Exception {
+        Mockito.when(noteService.getNotesByPatientId(2)).thenReturn(List.of());
+
+        mockMvc.perform(get("/notes/patient/2"))
+                .andExpect(status().isNoContent());
     }
 
     @Test
-    void testAddNote() throws Exception {
-        Note newNote = new Note();
-        newNote.setPatientId(99);
-        newNote.setContenu("Cholestérol élevé");
+    @WithMockUser(roles = "PRATICIEN")
+    void addNote_shouldReturnCreated() throws Exception {
+        String noteJson = """
+            {
+              "patientId": 1,
+              "content": "Test content"
+            }
+            """;
 
         mockMvc.perform(post("/notes")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newNote)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.contenu").value("Cholestérol élevé"));
+                        .content(noteJson))
+                .andExpect(status().isCreated());
     }
-
 }
