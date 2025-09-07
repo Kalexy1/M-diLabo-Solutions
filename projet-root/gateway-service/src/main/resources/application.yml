@@ -15,24 +15,22 @@ spring:
             - Path=/patients/**
 
         - id: note-service
-          uri: http://note-service:8083
+          uri: http://note-service:8082
           predicates:
             - Path=/notes/**
 
         - id: risk-assessment-service
-          uri: http://risk-assessment-service:8084
+          uri: http://risk-assessment-service:8083
           predicates:
             - Path=/risk/**
-          filters:
-            - RewritePath=/risk/(?<segment>.*), /assess/${segment}
 
         - id: access-denied-page
-          uri: http://patient-ui-service:8082
+          uri: http://patient-ui-service:8084
           predicates:
             - Path=/access-denied
 
         - id: patient-ui-service
-          uri: http://patient-ui-service:8082
+          uri: http://patient-ui-service:8084
           predicates:
             - Path=/ui/**
           filters:
