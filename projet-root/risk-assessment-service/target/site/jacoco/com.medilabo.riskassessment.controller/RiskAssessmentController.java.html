@@ -2,47 +2,39 @@
 
 import com.medilabo.riskassessment.dto.RiskAssessmentResponse;
 import com.medilabo.riskassessment.service.RiskAssessmentService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * Application: com.medilabo.riskassessment.controller
- * &lt;p&gt;
- * Classe &lt;strong&gt;RiskAssessmentController&lt;/strong&gt;.
- * &lt;br/&gt;
- * Rôle : Expose les endpoints REST du microservice &lt;em&gt;risk-assessment-service&lt;/em&gt;.
- * &lt;/p&gt;
- * &lt;p&gt;
- * Ce contrôleur permet d’évaluer le risque de diabète d’un patient
- * en interrogeant le service métier {@link RiskAssessmentService}.
- * &lt;/p&gt;
+ *
+ * Contrôleur REST du microservice risk-assessment-service.
+ * Expose l’endpoint /risk/{patientId} qui calcule le niveau de risque
+ * en s’appuyant sur RiskAssessmentService.
+ *
+ * Sécurité :
+ *  - Accès restreint au rôle PRATICIEN via @PreAuthorize.
+ *  - L’API est protégée par un Resource Server JWT (SecurityConfig).
  */
 @RestController
-@RequestMapping(&quot;/assess&quot;)
-<span class="fc" id="L24">public class RiskAssessmentController {</span>
+@RequestMapping(&quot;/risk&quot;)
+public class RiskAssessmentController {
 
-    @Autowired
-    private RiskAssessmentService riskService;
+    private final RiskAssessmentService riskService;
+
+<span class="fc" id="L26">    public RiskAssessmentController(RiskAssessmentService riskService) {</span>
+<span class="fc" id="L27">        this.riskService = riskService;</span>
+<span class="fc" id="L28">    }</span>
 
     /**
-     * Évalue le risque de diabète d’un patient en fonction :
-     * &lt;ul&gt;
-     *   &lt;li&gt;de ses données personnelles (âge, sexe) récupérées depuis &lt;em&gt;patient-service&lt;/em&gt;,&lt;/li&gt;
-     *   &lt;li&gt;de son historique médical (notes) récupéré depuis &lt;em&gt;note-service&lt;/em&gt;.&lt;/li&gt;
-     * &lt;/ul&gt;
-     * Accessible uniquement aux utilisateurs ayant le rôle &lt;b&gt;PRATICIEN&lt;/b&gt;.
-     *
-     * @param patientId identifiant du patient à analyser
-     * @return une réponse HTTP {@link ResponseEntity} contenant un objet
-     *         {@link RiskAssessmentResponse} avec le niveau de risque évalué
+     * GET /risk/{patientId}
+     * Retourne le niveau de risque pour le patient demandé.
      */
     @PreAuthorize(&quot;hasRole('PRATICIEN')&quot;)
     @GetMapping(&quot;/{patientId}&quot;)
     public ResponseEntity&lt;RiskAssessmentResponse&gt; getRisk(@PathVariable Long patientId) {
-<span class="fc" id="L44">        RiskAssessmentResponse response = riskService.assessRiskDetailed(patientId);</span>
-<span class="fc" id="L45">        return ResponseEntity.ok(response);</span>
+<span class="fc" id="L37">        return ResponseEntity.ok(riskService.assessRiskDetailed(patientId));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

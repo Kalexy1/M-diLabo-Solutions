@@ -1,50 +1,76 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RiskAssessmentServiceSecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">risk-assessment-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.riskassessment.config</a> &gt; <span class="el_source">RiskAssessmentServiceSecurityConfig.java</span></div><h1>RiskAssessmentServiceSecurityConfig.java</h1><pre class="source lang-java linenums">package com.medilabo.riskassessment.config;
 
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * Application: com.medilabo.riskassessment.config
  * &lt;p&gt;
- * Classe &lt;strong&gt;RiskAssessmentServiceSecurityConfig&lt;/strong&gt;.
+ * Classe &lt;strong&gt;SecurityConfig&lt;/strong&gt;.
  * &lt;br/&gt;
- * Rôle : Configure la sécurité pour le microservice &lt;em&gt;risk-assessment-service&lt;/em&gt;.
+ * Rôle : Configure la sécurité pour le microservice &lt;em&gt;risk-assessment-service&lt;/em&gt;
+ * en tant que &lt;b&gt;Resource Server JWT&lt;/b&gt;.
  * &lt;/p&gt;
- * &lt;p&gt;
- * Détails de la configuration :
+ *
+ * &lt;h3&gt;Principes&lt;/h3&gt;
  * &lt;ul&gt;
- *   &lt;li&gt;&lt;b&gt;CSRF désactivé&lt;/b&gt; car ce microservice expose uniquement des endpoints REST
- *   et ne gère pas de formulaires HTML.&lt;/li&gt;
- *   &lt;li&gt;&lt;b&gt;Authentification obligatoire&lt;/b&gt; pour toutes les requêtes.&lt;/li&gt;
- *   &lt;li&gt;&lt;b&gt;Authentification HTTP Basic&lt;/b&gt; activée pour la simplicité
- *   des appels entre microservices.&lt;/li&gt;
- *   &lt;li&gt;Support des annotations de sécurité méthode comme
- *   {@code @PreAuthorize} grâce à {@link EnableMethodSecurity}.&lt;/li&gt;
+ *   &lt;li&gt;CSRF désactivé (API REST).&lt;/li&gt;
+ *   &lt;li&gt;Endpoints Actuator ouverts pour la supervision.&lt;/li&gt;
+ *   &lt;li&gt;Accès à &lt;code&gt;GET /risk/**&lt;/code&gt; restreint au rôle &lt;code&gt;ROLE_PRATICIEN&lt;/code&gt;.&lt;/li&gt;
+ *   &lt;li&gt;Toutes les autres requêtes nécessitent un JWT valide.&lt;/li&gt;
+ *   &lt;li&gt;Le secret HMAC est injecté via la propriété/variable d’env. &lt;code&gt;JWT_SECRET&lt;/code&gt;.&lt;/li&gt;
  * &lt;/ul&gt;
+ *
+ * &lt;p&gt;
+ * Le Gateway dépose le header &lt;code&gt;Authorization: Bearer &amp;lt;token&amp;gt;&lt;/code&gt;
+ * grâce au filtre Cookie→Authorization. Les rôles doivent être stockés en base
+ * avec le préfixe &lt;code&gt;ROLE_&lt;/code&gt; (ex. &lt;code&gt;ROLE_PRATICIEN&lt;/code&gt;).
  * &lt;/p&gt;
  */
 @Configuration
 @EnableMethodSecurity
-<span class="fc" id="L31">public class RiskAssessmentServiceSecurityConfig {</span>
+<span class="fc" id="L42">public class RiskAssessmentServiceSecurityConfig {</span>
 
-    /**
-     * Définit la chaîne de filtres de sécurité.
-     *
-     * @param http instance de {@link HttpSecurity} à configurer
-     * @return une {@link SecurityFilterChain} configurée
-     * @throws Exception en cas d’erreur de configuration
-     */
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-<span class="fc" id="L42">        return http</span>
-<span class="fc" id="L43">            .csrf().disable()</span>
-<span class="fc" id="L44">            .authorizeHttpRequests(auth -&gt; auth.anyRequest().authenticated())</span>
-<span class="fc" id="L45">            .httpBasic()</span>
-<span class="fc" id="L46">            .and()</span>
-<span class="fc" id="L47">            .build();</span>
-    }
+  /**
+   * Définit la chaîne de filtres de sécurité HTTP (Resource Server JWT).
+   *
+   * @param http l’instance {@link HttpSecurity}
+   * @return la {@link SecurityFilterChain} configurée
+   * @throws Exception si une erreur survient
+   */
+  @Bean
+  public SecurityFilterChain api(HttpSecurity http) throws Exception {
+<span class="fc" id="L53">    return http</span>
+<span class="fc" id="L54">      .csrf(csrf -&gt; csrf.disable())</span>
+<span class="fc" id="L55">      .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="fc" id="L56">        .requestMatchers(&quot;/actuator/**&quot;).permitAll()</span>
+<span class="fc" id="L57">        .requestMatchers(HttpMethod.GET, &quot;/risk/**&quot;).hasRole(&quot;PRATICIEN&quot;)</span>
+<span class="fc" id="L58">        .anyRequest().authenticated()</span>
+      )
+<span class="fc" id="L60">      .oauth2ResourceServer(oauth -&gt; oauth.jwt())</span>
+<span class="fc" id="L61">      .build();</span>
+  }
+
+  /**
+   * Décodeur JWT (HMAC-SHA256) basé sur le secret partagé avec l’auth-service.
+   *
+   * @param secret valeur de la propriété/variable d’environnement {@code JWT_SECRET}
+   * @return un {@link JwtDecoder} HMAC
+   */
+  @Bean
+  public JwtDecoder jwtDecoder(@Value(&quot;${JWT_SECRET}&quot;) String secret) {
+<span class="fc" id="L72">    var key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), &quot;HmacSHA256&quot;);</span>
+<span class="fc" id="L73">    return NimbusJwtDecoder.withSecretKey(key).build();</span>
+  }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

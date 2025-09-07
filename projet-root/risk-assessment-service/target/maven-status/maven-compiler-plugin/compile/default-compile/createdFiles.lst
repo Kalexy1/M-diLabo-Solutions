@@ -1,0 +1,7 @@
+com\medilabo\riskassessment\RiskAssessmentServiceApplication.class
+com\medilabo\riskassessment\service\RiskAssessmentService.class
+com\medilabo\riskassessment\config\RiskAssessmentServiceSecurityConfig.class
+com\medilabo\riskassessment\dto\PatientDTO.class
+com\medilabo\riskassessment\dto\NoteDTO.class
+com\medilabo\riskassessment\controller\RiskAssessmentController.class
+com\medilabo\riskassessment\dto\RiskAssessmentResponse.class

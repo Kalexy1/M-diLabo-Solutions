@@ -52,9 +52,9 @@ public class RiskAssessmentService {
      * &lt;/p&gt;
      */
 <span class="fc" id="L54">    private final List&lt;String&gt; triggers = List.of(</span>
-<span class="fc" id="L55">        &quot;Hémoglobine A1C&quot;, &quot;Microalbumine&quot;, &quot;Taille&quot;, &quot;Poids&quot;,</span>
-<span class="fc" id="L56">        &quot;Fumeur&quot;, &quot;Fumeuse&quot;, &quot;Anormal&quot;, &quot;Cholestérol&quot;,</span>
-<span class="fc" id="L57">        &quot;Vertiges&quot;, &quot;Rechute&quot;, &quot;Réaction&quot;, &quot;Anticorps&quot;</span>
+        &quot;Hémoglobine A1C&quot;, &quot;Microalbumine&quot;, &quot;Taille&quot;, &quot;Poids&quot;,
+        &quot;Fumeur&quot;, &quot;Fumeuse&quot;, &quot;Anormal&quot;, &quot;Cholestérol&quot;,
+        &quot;Vertiges&quot;, &quot;Rechute&quot;, &quot;Réaction&quot;, &quot;Anticorps&quot;
     );
 
     /**
@@ -127,7 +127,7 @@ public class RiskAssessmentService {
 <span class="fc bfc" id="L127" title="All 2 branches covered.">                        if (normalized.contains(trigger.toLowerCase())) {</span>
 <span class="fc" id="L128">                            count++;</span>
                         }
-                    }
+<span class="fc" id="L130">                    }</span>
                 }
             }
         }
@@ -205,8 +205,8 @@ public class RiskAssessmentService {
 <span class="fc" id="L205">            patient.getId(),</span>
 <span class="fc" id="L206">            patient.getPrenom(),</span>
 <span class="fc" id="L207">            patient.getNom(),</span>
-<span class="fc" id="L208">            age,</span>
-<span class="fc" id="L209">            risk</span>
+            age,
+            risk
         );
     }
 }
