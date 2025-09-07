@@ -10,31 +10,47 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 /**
- * Configuration de la sécurité pour le microservice {@code auth-service}.
- *
+ * Application: com.medilabo.auth.config
  * <p>
- * Cette classe définit les règles de sécurité et la gestion de l’authentification.
- * Elle utilise Spring Security avec un formulaire de login personnalisé
- * et génère un JWT pour chaque utilisateur authentifié.
+ * Classe <strong>SecurityConfig</strong>.
+ * <br/>
+ * Rôle : Configure la sécurité pour le microservice <em>auth-service</em>.
  * </p>
  *
- * <h3>Fonctionnalités principales</h3>
+ * <h3>Fonctionnalités principales :</h3>
  * <ul>
- *   <li>Autorise l’accès public à certaines routes : {@code /auth/register}, {@code /auth/login},
- *       {@code /access-denied}, ressources statiques.</li>
- *   <li>Exige une authentification pour toutes les autres routes.</li>
- *   <li>Après une connexion réussie :
+ *   <li>Active la protection CSRF avec stockage du token dans un cookie
+ *       (lisible côté client pour l’intégration avec Thymeleaf).</li>
+ *   <li>Autorise l’accès public aux routes :
+ *       <ul>
+ *         <li><code>/auth/register</code> → inscription</li>
+ *         <li><code>/auth/login</code> → formulaire de login</li>
+ *         <li><code>/access-denied</code> → page d’accès refusé</li>
+ *         <li><code>/logout</code> → déconnexion</li>
+ *         <li>ressources statiques (<code>/css/**</code>, <code>/js/**</code>, <code>/images/**</code>)</li>
+ *         <li>Actuator (<code>/actuator/**</code>)</li>
+ *       </ul>
+ *   </li>
+ *   <li>Exige une authentification pour toutes les autres requêtes.</li>
+ *   <li>Configure un formulaire de login personnalisé sur <code>/auth/login</code>.</li>
+ *   <li>À la connexion réussie :
  *     <ul>
- *       <li>Un JWT signé est généré via {@link JwtIssuer}.</li>
- *       <li>Le JWT est placé dans un cookie HttpOnly {@code ACCESS_TOKEN} (valide 1h).</li>
- *       <li>L’utilisateur est redirigé vers {@code /ui/patients} via le gateway.</li>
+ *       <li>Un JWT est généré via {@link JwtIssuer}.</li>
+ *       <li>Le JWT est stocké dans un cookie HttpOnly nommé <code>ACCESS_TOKEN</code> valable 1h.</li>
+ *       <li>L’utilisateur est redirigé vers <code>/patients</code> (via le Gateway).</li>
  *     </ul>
  *   </li>
- *   <li>En cas d’échec de connexion, redirige vers {@code /auth/login?error}.</li>
- *   <li>À la déconnexion, le cookie {@code ACCESS_TOKEN} est supprimé et
- *       l’utilisateur est redirigé vers {@code /auth/login?logout}.</li>
+ *   <li>En cas d’échec → redirection vers <code>/auth/login?error</code>.</li>
+ *   <li>À la déconnexion :
+ *     <ul>
+ *       <li>Le cookie <code>ACCESS_TOKEN</code> est supprimé.</li>
+ *       <li>Redirection vers <code>/auth/login?logout</code>.</li>
+ *     </ul>
+ *   </li>
+ *   <li>Page d’accès refusé définie sur <code>/access-denied</code>.</li>
  * </ul>
  */
 @Configuration
@@ -42,79 +58,87 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    /**
-     * Composant responsable de la génération des JWT.
-     */
+    /** Service responsable de la génération des JWT. */
     private final JwtIssuer jwtIssuer;
 
     /**
-     * Constructeur qui injecte le générateur de JWT.
+     * Constructeur avec injection de dépendance.
      *
-     * @param jwtIssuer service permettant d’émettre des JWT signés
+     * @param jwtIssuer service permettant de créer des JWT signés
      */
     public SecurityConfig(JwtIssuer jwtIssuer) {
         this.jwtIssuer = jwtIssuer;
     }
 
     /**
-     * Chaîne de filtres de sécurité HTTP.
+     * Définit la chaîne de filtres Spring Security pour l’application.
      *
-     * <p>
-     * Définit les règles d’accès, la gestion du formulaire de login et
-     * le traitement personnalisé après authentification ou déconnexion.
-     * </p>
+     * <p>Points clés :</p>
+     * <ul>
+     *   <li>CSRF activé avec {@link CookieCsrfTokenRepository} (token envoyé dans un cookie).</li>
+     *   <li>Autorisation des routes publiques.</li>
+     *   <li>Formulaire de login configuré sur <code>/auth/login</code>.</li>
+     *   <li>Gestion de la génération et de la suppression du cookie JWT.</li>
+     *   <li>Page d’accès refusé personnalisée.</li>
+     * </ul>
      *
-     * @param http objet {@link HttpSecurity} fourni par Spring
-     * @return la configuration complète de la sécurité
-     * @throws Exception si un problème survient lors de la configuration
+     * @param http objet {@link HttpSecurity} configuré par Spring
+     * @return la {@link SecurityFilterChain} résultante
+     * @throws Exception en cas d’erreur de configuration
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/auth/register", "/auth/login", "/access-denied",
-                    "/logout", "/css/**", "/js/**", "/images/**"
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
-            .formLogin(form -> form
-                .loginPage("/auth/login")
-                .loginProcessingUrl("/auth/login")
-                .successHandler((req, res, authentication) -> {
-                    String token = jwtIssuer.issue(authentication.getName(),
-                            authentication.getAuthorities().stream().toList());
+          .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+          .authorizeHttpRequests(auth -> auth
+              .requestMatchers(
+                  "/auth/register", "/auth/login", "/access-denied",
+                  "/logout", "/css/**", "/js/**", "/images/**",
+                  "/actuator/**"
+              ).permitAll()
+              .anyRequest().authenticated()
+          )
+          .formLogin(form -> form
+              .loginPage("/auth/login")
+              .loginProcessingUrl("/auth/login")
+              .successHandler((req, res, authentication) -> {
+                  String token = jwtIssuer.issue(
+                      authentication.getName(),
+                      authentication.getAuthorities().stream().toList()
+                  );
 
-                    Cookie cookie = new Cookie("ACCESS_TOKEN", token);
-                    cookie.setHttpOnly(true);
-                    cookie.setPath("/");
-                    cookie.setMaxAge(3600); // 1h
+                  Cookie cookie = new Cookie("ACCESS_TOKEN", token);
+                  cookie.setHttpOnly(true);
+                  cookie.setPath("/");
+                  cookie.setMaxAge(3600);
+                  res.addCookie(cookie);
 
-                    res.addCookie(cookie);
-                    res.sendRedirect("/ui/patients");
-                })
-                .failureUrl("/auth/login?error")
-                .permitAll()
-            )
-            .logout(logout -> logout
-                .logoutUrl("/logout")
-                .addLogoutHandler((req, res, auth) -> {
-                    Cookie cookie = new Cookie("ACCESS_TOKEN", "");
-                    cookie.setHttpOnly(true);
-                    cookie.setPath("/");
-                    cookie.setMaxAge(0);
-                    res.addCookie(cookie);
-                })
-                .logoutSuccessUrl("/auth/login?logout")
-                .permitAll()
-            );
+                  res.sendRedirect("http://localhost:8080/patients");
+              })
+              .failureUrl("/auth/login?error")
+              .permitAll()
+          )
+          .logout(logout -> logout
+              .logoutUrl("/logout")
+              .addLogoutHandler((req, res, auth) -> {
+                  Cookie cookie = new Cookie("ACCESS_TOKEN", "");
+                  cookie.setHttpOnly(true);
+                  cookie.setPath("/");
+                  cookie.setMaxAge(0);
+                  res.addCookie(cookie);
+              })
+              .logoutSuccessUrl("/auth/login?logout")
+              .permitAll()
+          )
+          .exceptionHandling(e -> e.accessDeniedPage("/access-denied"));
+
         return http.build();
     }
 
     /**
-     * Bean {@link PasswordEncoder} basé sur l’algorithme BCrypt.
+     * Fournit un encodeur de mots de passe utilisant BCrypt.
      *
-     * @return un encodeur de mots de passe sécurisé
+     * @return une instance de {@link PasswordEncoder}
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
