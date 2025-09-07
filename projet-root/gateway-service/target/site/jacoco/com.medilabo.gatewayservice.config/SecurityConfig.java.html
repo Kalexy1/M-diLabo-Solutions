@@ -4,100 +4,120 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
+import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Stream;
 
 /**
- * Configuration de la sécurité pour le microservice {@code gateway-service}.
+ * Application: gateway-service
+ *
+ * &lt;p&gt;&lt;strong&gt;SecurityConfig&lt;/strong&gt;&lt;/p&gt;
  *
  * &lt;p&gt;
- * Ce gateway agit comme proxy sécurisé devant les autres microservices.  
- * Il valide les JWT signés émis par l’{@code auth-service} et applique les
- * règles d’accès en fonction des rôles contenus dans les jetons.
+ * Configuration Spring Security (WebFlux) pour la Gateway.
+ * La Gateway valide les JWT émis par &lt;em&gt;auth-service&lt;/em&gt; (HS256) et
+ * applique les règles d’accès en fonction des rôles présents dans le jeton.
  * &lt;/p&gt;
  *
- * &lt;h3&gt;Fonctionnalités principales&lt;/h3&gt;
+ * &lt;h3&gt;Fonctionnalités&lt;/h3&gt;
  * &lt;ul&gt;
- *   &lt;li&gt;Validation des jetons JWT (algorithme HS256) avec la clé secrète partagée
- *       définie par la variable d’environnement {@code JWT_SECRET}.&lt;/li&gt;
- *   &lt;li&gt;Application de règles de sécurité par rôle :
- *     &lt;ul&gt;
- *       &lt;li&gt;{@code /auth/**}, {@code /access-denied} : accès public.&lt;/li&gt;
- *       &lt;li&gt;{@code /ui/**}, {@code /patients/**} : accès réservé aux rôles {@code ORGANISATEUR} ou {@code PRATICIEN}.&lt;/li&gt;
- *       &lt;li&gt;{@code /notes/**}, {@code /risk/**} : accès réservé au rôle {@code PRATICIEN}.&lt;/li&gt;
- *       &lt;li&gt;Toutes les autres routes : authentification requise.&lt;/li&gt;
- *     &lt;/ul&gt;
- *   &lt;/li&gt;
- *   &lt;li&gt;Redirection vers {@code /auth/login} si l’utilisateur n’est pas authentifié.&lt;/li&gt;
- *   &lt;li&gt;Redirection vers {@code /access-denied} si l’utilisateur est authentifié
- *       mais ne possède pas les rôles requis.&lt;/li&gt;
- *   &lt;li&gt;Désactivation du CSRF (le gateway ne sert pas de formulaires).&lt;/li&gt;
+ *   &lt;li&gt;Validation des JWT via {@link ReactiveJwtDecoder} (secret {@code JWT_SECRET}).&lt;/li&gt;
+ *   &lt;li&gt;Accès public : {@code /auth/**}, {@code /access-denied}, {@code /actuator/**}
+ *       et ressources statiques ({@code /favicon.ico}, {@code /webjars/**}, {@code /css/**},
+ *       {@code /js/**}, {@code /images/**}).&lt;/li&gt;
+ *   &lt;li&gt;Accès {@code /ui/**} et {@code /patients/**} : rôles {@code ORGANISATEUR} ou {@code PRATICIEN}.&lt;/li&gt;
+ *   &lt;li&gt;Accès {@code /notes/**} et {@code /risk/**} : rôle {@code PRATICIEN}.&lt;/li&gt;
+ *   &lt;li&gt;Redirection vers {@code /auth/login} si non authentifié, vers {@code /access-denied} si interdit.&lt;/li&gt;
+ *   &lt;li&gt;CSRF désactivé (la Gateway ne sert pas de formulaires).&lt;/li&gt;
  * &lt;/ul&gt;
  */
 @Configuration
-<span class="fc" id="L42">public class SecurityConfig {</span>
+<span class="fc" id="L45">public class SecurityConfig {</span>
 
     /**
-     * Définit la chaîne de filtres de sécurité pour Spring Security WebFlux.
-     *
-     * @param http l’API de configuration de la sécurité réactive
-     * @return la configuration complète du filtre de sécurité
+     * Chaîne des filtres de sécurité réactive.
      */
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
 <span class="fc" id="L52">        return http</span>
 <span class="fc" id="L53">            .authorizeExchange(ex -&gt; ex</span>
-<span class="fc" id="L54">                .pathMatchers(&quot;/auth/**&quot;, &quot;/access-denied&quot;).permitAll()</span>
-<span class="fc" id="L55">                .pathMatchers(&quot;/ui/**&quot;, &quot;/patients/**&quot;).hasAnyRole(&quot;ORGANISATEUR&quot;, &quot;PRATICIEN&quot;)</span>
-<span class="fc" id="L56">                .pathMatchers(&quot;/notes/**&quot;, &quot;/risk/**&quot;).hasRole(&quot;PRATICIEN&quot;)</span>
-<span class="fc" id="L57">                .anyExchange().authenticated()</span>
+<span class="fc" id="L54">                .pathMatchers(</span>
+                    &quot;/auth/**&quot;,
+                    &quot;/access-denied&quot;,
+                    &quot;/actuator/**&quot;,
+                    &quot;/favicon.ico&quot;,
+                    &quot;/webjars/**&quot;,
+                    &quot;/css/**&quot;,
+                    &quot;/js/**&quot;,
+                    &quot;/images/**&quot;
+<span class="fc" id="L63">                ).permitAll()</span>
+
+<span class="fc" id="L65">                .pathMatchers(&quot;/ui/**&quot;, &quot;/patients/**&quot;).hasAnyRole(&quot;ORGANISATEUR&quot;, &quot;PRATICIEN&quot;)</span>
+<span class="fc" id="L66">                .pathMatchers(&quot;/notes/**&quot;, &quot;/risk/**&quot;).hasRole(&quot;PRATICIEN&quot;)</span>
+
+<span class="fc" id="L68">                .anyExchange().authenticated()</span>
             )
-<span class="fc" id="L59">            .oauth2ResourceServer(oauth -&gt; oauth.jwt(jwt -&gt; jwt.jwtAuthenticationConverter(ctx -&gt; {</span>
-<span class="nc" id="L60">                var roles = (java.util.List&lt;String&gt;) ctx.getClaims().getOrDefault(&quot;roles&quot;, java.util.List.of());</span>
-<span class="nc" id="L61">                var auths = roles.stream()</span>
-<span class="nc bnc" id="L62" title="All 2 branches missed.">                        .map(r -&gt; r.startsWith(&quot;ROLE_&quot;) ? r : &quot;ROLE_&quot; + r)</span>
-<span class="nc" id="L63">                        .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)</span>
-<span class="nc" id="L64">                        .toList();</span>
-<span class="nc" id="L65">                return reactor.core.publisher.Mono.just(</span>
-<span class="nc" id="L66">                        new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(</span>
-<span class="nc" id="L67">                                ctx.getSubject(), &quot;n/a&quot;, auths));</span>
-<span class="fc" id="L68">            })))</span>
-<span class="fc" id="L69">            .exceptionHandling(e -&gt; e</span>
-<span class="fc" id="L70">                .authenticationEntryPoint((exchange, ex) -&gt; {</span>
-<span class="fc" id="L71">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
-<span class="fc" id="L72">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/auth/login&quot;));</span>
-<span class="fc" id="L73">                    return exchange.getResponse().setComplete();</span>
+<span class="fc" id="L70">            .oauth2ResourceServer(oauth -&gt; oauth.jwt(jwt -&gt; jwt</span>
+<span class="fc" id="L71">                .jwtAuthenticationConverter(token -&gt; {</span>
+<span class="nc" id="L72">                    Object rolesClaim = token.getClaims().get(&quot;roles&quot;);</span>
+<span class="nc" id="L73">                    Object authsClaim = token.getClaims().get(&quot;authorities&quot;);</span>
+
+<span class="nc" id="L75">                    Stream&lt;String&gt; rolesStream = Stream.empty();</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">                    if (rolesClaim instanceof Collection&lt;?&gt; c1) {</span>
+<span class="nc" id="L77">                        rolesStream = c1.stream().filter(String.class::isInstance).map(String.class::cast);</span>
+                    }
+<span class="nc" id="L79">                    Stream&lt;String&gt; authsStream = Stream.empty();</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">                    if (authsClaim instanceof Collection&lt;?&gt; c2) {</span>
+<span class="nc" id="L81">                        authsStream = c2.stream().filter(String.class::isInstance).map(String.class::cast);</span>
+                    }
+
+<span class="nc" id="L84">                    List&lt;SimpleGrantedAuthority&gt; authorities = Stream</span>
+<span class="nc" id="L85">                        .concat(rolesStream, authsStream)</span>
+<span class="nc" id="L86">                        .distinct()</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">                        .map(r -&gt; r.startsWith(&quot;ROLE_&quot;) ? r : &quot;ROLE_&quot; + r)</span>
+<span class="nc" id="L88">                        .map(SimpleGrantedAuthority::new)</span>
+<span class="nc" id="L89">                        .toList();</span>
+
+<span class="nc" id="L91">                    return reactor.core.publisher.Mono.just(</span>
+<span class="nc" id="L92">                        new UsernamePasswordAuthenticationToken(token.getSubject(), &quot;n/a&quot;, authorities)</span>
+                    );
                 })
-<span class="fc" id="L75">                .accessDeniedHandler((exchange, denied) -&gt; {</span>
-<span class="fc" id="L76">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
-<span class="fc" id="L77">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/access-denied&quot;));</span>
-<span class="fc" id="L78">                    return exchange.getResponse().setComplete();</span>
-<span class="fc" id="L79">                })</span>
+            ))
+<span class="fc" id="L96">            .exceptionHandling(e -&gt; e</span>
+<span class="fc" id="L97">                .authenticationEntryPoint((exchange, ex) -&gt; {</span>
+<span class="fc" id="L98">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
+<span class="fc" id="L99">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/auth/login&quot;));</span>
+<span class="fc" id="L100">                    return exchange.getResponse().setComplete();</span>
+                })
+<span class="fc" id="L102">                .accessDeniedHandler((exchange, denied) -&gt; {</span>
+<span class="fc" id="L103">                    exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);</span>
+<span class="fc" id="L104">                    exchange.getResponse().getHeaders().setLocation(URI.create(&quot;/access-denied&quot;));</span>
+<span class="fc" id="L105">                    return exchange.getResponse().setComplete();</span>
+                })
             )
-<span class="fc" id="L81">            .csrf(ServerHttpSecurity.CsrfSpec::disable)</span>
-<span class="fc" id="L82">            .build();</span>
+<span class="fc" id="L108">            .csrf(ServerHttpSecurity.CsrfSpec::disable)</span>
+<span class="fc" id="L109">            .build();</span>
     }
 
     /**
-     * Déclare un décodeur de jetons JWT pour l’algorithme HS256.
+     * Décodeur JWT HS256 basé sur la clé partagée avec {@code auth-service}.
      *
-     * &lt;p&gt;
-     * Le décodeur est basé sur la clé secrète définie par la propriété
-     * {@code JWT_SECRET}. Cette clé doit être identique à celle utilisée
-     * par l’{@code auth-service} pour émettre les jetons.
-     * &lt;/p&gt;
-     *
-     * @param secret la clé secrète injectée depuis {@code JWT_SECRET}
-     * @return un décodeur JWT réactif basé sur HS256
+     * @param secret valeur de la propriété/variable d’environnement {@code JWT_SECRET}
      */
     @Bean
     public ReactiveJwtDecoder jwtDecoder(@Value(&quot;${JWT_SECRET}&quot;) String secret) {
-<span class="fc" id="L99">        return NimbusReactiveJwtDecoder.withSecretKey(</span>
-<span class="fc" id="L100">                new javax.crypto.spec.SecretKeySpec(secret.getBytes(), &quot;HmacSHA256&quot;)).build();</span>
+<span class="fc" id="L119">        var key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), &quot;HmacSHA256&quot;);</span>
+<span class="fc" id="L120">        return NimbusReactiveJwtDecoder.withSecretKey(key).build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

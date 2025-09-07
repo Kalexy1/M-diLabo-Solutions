@@ -1,3 +1,5 @@
 com\medilabo\gatewayservice\config\SecurityConfigTest$TestUsers.class
 com\medilabo\gatewayservice\GatewayServiceApplicationTest.class
+com\medilabo\gatewayservice\security\CookieToAuthHeaderFilterTest$1.class
+com\medilabo\gatewayservice\security\CookieToAuthHeaderFilterTest.class
 com\medilabo\gatewayservice\config\SecurityConfigTest.class
