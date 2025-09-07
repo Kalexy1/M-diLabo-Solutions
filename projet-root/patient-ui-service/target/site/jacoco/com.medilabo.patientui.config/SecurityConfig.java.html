@@ -22,8 +22,7 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
  *   &lt;li&gt;&lt;b&gt;CSRF activé&lt;/b&gt; pour protéger les formulaires HTML (POST) utilisés dans l’UI.&lt;/li&gt;
  *   &lt;li&gt;Accès public à &lt;code&gt;/access-denied&lt;/code&gt;.&lt;/li&gt;
  *   &lt;li&gt;Authentification requise pour toutes les autres requêtes.&lt;/li&gt;
- *   &lt;li&gt;Page de connexion personnalisée : &lt;code&gt;/auth/login&lt;/code&gt;.&lt;/li&gt;
- *   &lt;li&gt;Redirection post-authentification vers &lt;code&gt;/patients&lt;/code&gt;.&lt;/li&gt;
+ *   &lt;li&gt;Les requêtes sont authentifiées via un JWT présent dans l'en-tête &lt;code&gt;Authorization&lt;/code&gt;.&lt;/li&gt;
  *   &lt;li&gt;Redirection en cas d'accès refusé : &lt;code&gt;/access-denied&lt;/code&gt;.&lt;/li&gt;
  * &lt;/ul&gt;
  * &lt;/p&gt;
@@ -31,7 +30,7 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-<span class="fc" id="L34">public class SecurityConfig {</span>
+<span class="fc" id="L33">public class SecurityConfig {</span>
 
     /**
      * Configure la chaîne de filtres Spring Security.
@@ -42,29 +41,15 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-<span class="fc" id="L45">        return http</span>
-<span class="fc" id="L46">            .authorizeHttpRequests(auth -&gt; auth</span>
-<span class="fc" id="L47">                .requestMatchers(&quot;/access-denied&quot;).permitAll()</span>
-<span class="fc" id="L48">                .anyRequest().authenticated()</span>
+<span class="fc" id="L44">        return http</span>
+<span class="fc" id="L45">            .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="fc" id="L46">                .requestMatchers(&quot;/access-denied&quot;).permitAll()</span>
+<span class="fc" id="L47">                .anyRequest().authenticated()</span>
             )
-<span class="fc" id="L50">            .formLogin(form -&gt; form</span>
-<span class="fc" id="L51">                .loginPage(&quot;/auth/login&quot;).permitAll()</span>
-<span class="fc" id="L52">                .successHandler(successHandler())</span>
+<span class="fc" id="L49">            .exceptionHandling(ex -&gt; ex</span>
+<span class="fc" id="L50">                .accessDeniedPage(&quot;/access-denied&quot;)</span>
             )
-<span class="fc" id="L54">            .exceptionHandling(ex -&gt; ex</span>
-<span class="fc" id="L55">                .accessDeniedPage(&quot;/access-denied&quot;)</span>
-            )
-<span class="fc" id="L57">            .build();</span>
-    }
-
-    /**
-     * Définit le handler exécuté après une authentification réussie.
-     *
-     * @return un {@link AuthenticationSuccessHandler} redirigeant vers &lt;code&gt;/patients&lt;/code&gt;.
-     */
-    @Bean
-    public AuthenticationSuccessHandler successHandler() {
-<span class="fc" id="L67">        return new SimpleUrlAuthenticationSuccessHandler(&quot;/patients&quot;);</span>
+<span class="fc" id="L52">            .build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

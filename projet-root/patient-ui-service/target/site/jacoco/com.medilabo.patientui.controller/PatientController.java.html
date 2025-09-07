@@ -77,14 +77,14 @@ public class PatientController {
 <span class="fc" id="L77">            notesByPatient.put(p.getId(), noteService.getNotesByPatientId(p.getId()));</span>
             try {
 <span class="fc" id="L79">                RiskAssessmentResponse risk = restTemplate.getForObject(</span>
-<span class="fc" id="L80">                        GATEWAY_BASE_URL + &quot;/risk/assess/&quot; + p.getId(),</span>
-<span class="fc" id="L81">                        RiskAssessmentResponse.class</span>
+<span class="fc" id="L80">                        GATEWAY_BASE_URL + &quot;/risk/&quot; + p.getId(),</span>
+                        RiskAssessmentResponse.class
                 );
 <span class="pc bpc" id="L83" title="1 of 2 branches missed.">                riskByPatient.put(p.getId(), risk != null ? risk.getRiskLevel() : &quot;Non disponible&quot;);</span>
-<span class="pc" id="L84">            } catch (Exception e) {</span>
+<span class="nc" id="L84">            } catch (Exception e) {</span>
 <span class="nc" id="L85">                riskByPatient.put(p.getId(), &quot;Non disponible&quot;);</span>
-            }
-        }
+<span class="fc" id="L86">            }</span>
+<span class="fc" id="L87">        }</span>
 
 <span class="fc" id="L89">        model.addAttribute(&quot;patients&quot;, patients);</span>
 <span class="fc" id="L90">        model.addAttribute(&quot;notesByPatient&quot;, notesByPatient);</span>
@@ -197,8 +197,8 @@ public class PatientController {
 <span class="fc" id="L197">        Patient patient = patientService.findById(id)</span>
 <span class="pc" id="L198">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Patient non trouvé : &quot; + id));</span>
 <span class="fc" id="L199">        RiskAssessmentResponse risk = restTemplate.getForObject(</span>
-<span class="fc" id="L200">                GATEWAY_BASE_URL + &quot;/risk/assess/&quot; + id,</span>
-<span class="fc" id="L201">                RiskAssessmentResponse.class</span>
+                GATEWAY_BASE_URL + &quot;/risk/&quot; + id,
+                RiskAssessmentResponse.class
         );
 <span class="fc" id="L203">        model.addAttribute(&quot;patient&quot;, patient);</span>
 <span class="fc" id="L204">        model.addAttribute(&quot;risk&quot;, risk);</span>
@@ -233,8 +233,8 @@ public class PatientController {
 <span class="fc" id="L233">        Patient patient = patientService.findById(id)</span>
 <span class="pc" id="L234">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Patient non trouvé : &quot; + id));</span>
 <span class="fc" id="L235">        RiskAssessmentResponse risk = restTemplate.getForObject(</span>
-<span class="fc" id="L236">                GATEWAY_BASE_URL + &quot;/risk/assess/&quot; + id,</span>
-<span class="fc" id="L237">                RiskAssessmentResponse.class</span>
+                GATEWAY_BASE_URL + &quot;/risk/&quot; + id,
+                RiskAssessmentResponse.class
         );
 
 <span class="fc" id="L240">        response.setContentType(&quot;application/pdf&quot;);</span>
@@ -252,7 +252,7 @@ public class PatientController {
 <span class="pc bpc" id="L252" title="1 of 2 branches missed.">        if (risk != null) {</span>
 <span class="fc" id="L253">            document.add(new Paragraph(&quot;Âge : &quot; + risk.getAge()));</span>
 <span class="fc" id="L254">            document.add(new Paragraph(&quot;Risque détecté : &quot; + risk.getRiskLevel()));</span>
-<span class="fc" id="L255">        } else {</span>
+        } else {
 <span class="nc" id="L256">            document.add(new Paragraph(&quot;Risque détecté : Non disponible&quot;));</span>
         }
 <span class="fc" id="L258">        document.close();</span>
