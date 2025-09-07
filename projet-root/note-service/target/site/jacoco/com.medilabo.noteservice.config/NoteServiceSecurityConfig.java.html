@@ -1,44 +1,74 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NoteServiceSecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">note-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.noteservice.config</a> &gt; <span class="el_source">NoteServiceSecurityConfig.java</span></div><h1>NoteServiceSecurityConfig.java</h1><pre class="source lang-java linenums">package com.medilabo.noteservice.config;
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NoteServiceSecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">note-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.noteservice.config</a> &gt; <span class="el_source">NoteServiceSecurityConfig.java</span></div><h1>NoteServiceSecurityConfig.java</h1><pre class="source lang-java linenums">// note-service/src/main/java/com/medilabo/noteservice/config/SecurityConfig.java
+package com.medilabo.noteservice.config;
 
+import javax.crypto.spec.SecretKeySpec; // ✅ correct
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * Application: com.medilabo.noteservice.config
  * &lt;p&gt;
- * Classe &lt;strong&gt;NoteServiceSecurityConfig&lt;/strong&gt;.
+ * Classe &lt;strong&gt;SecurityConfig&lt;/strong&gt;.
  * &lt;br/&gt;
- * Rôle : Configuration de la sécurité pour le microservice note-service.
- * Active la sécurité HTTP basique et autorise les annotations @PreAuthorize.
+ * Rôle : Configure &lt;em&gt;note-service&lt;/em&gt; en tant que &lt;b&gt;Resource Server JWT&lt;/b&gt;.
+ * &lt;/p&gt;
+ *
+ * &lt;h3&gt;Règles d’accès&lt;/h3&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;CSRF désactivé (API REST).&lt;/li&gt;
+ *   &lt;li&gt;&lt;code&gt;/actuator/**&lt;/code&gt; : accès libre (supervision).&lt;/li&gt;
+ *   &lt;li&gt;&lt;code&gt;GET /notes/**&lt;/code&gt; : rôles &lt;code&gt;ROLE_PRATICIEN&lt;/code&gt; ou &lt;code&gt;ROLE_ORGANISATEUR&lt;/code&gt;.&lt;/li&gt;
+ *   &lt;li&gt;&lt;code&gt;POST|PUT|DELETE /notes/**&lt;/code&gt; : rôle &lt;code&gt;ROLE_PRATICIEN&lt;/code&gt;.&lt;/li&gt;
+ *   &lt;li&gt;Toutes les autres requêtes nécessitent un JWT valide.&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * &lt;p&gt;
+ * Le JWT est propagé par le Gateway via l’en-tête
+ * &lt;code&gt;Authorization: Bearer &amp;lt;token&amp;gt;&lt;/code&gt;.
+ * Le secret HMAC est injecté via &lt;code&gt;JWT_SECRET&lt;/code&gt;.
  * &lt;/p&gt;
  */
 @Configuration
 @EnableMethodSecurity
-<span class="fc" id="L20">public class NoteServiceSecurityConfig {</span>
+<span class="fc" id="L42">public class NoteServiceSecurityConfig {</span>
 
-    /**
-     * Configure la chaîne de filtres de sécurité :
-     * &lt;ul&gt;
-     *   &lt;li&gt;Désactive CSRF (utile pour les APIs REST)&lt;/li&gt;
-     *   &lt;li&gt;Nécessite une authentification pour toutes les requêtes&lt;/li&gt;
-     *   &lt;li&gt;Utilise l'authentification HTTP Basic (gérée en amont par la Gateway)&lt;/li&gt;
-     * &lt;/ul&gt;
-     *
-     * @param http configuration HTTP
-     * @return le filtre de sécurité
-     * @throws Exception en cas de mauvaise configuration
-     */
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-<span class="fc" id="L36">        return http</span>
-<span class="fc" id="L37">            .csrf().disable()</span>
-<span class="fc" id="L38">            .authorizeHttpRequests(auth -&gt; auth.anyRequest().authenticated())</span>
-<span class="fc" id="L39">            .httpBasic()</span>
-<span class="fc" id="L40">            .and()</span>
-<span class="fc" id="L41">            .build();</span>
-    }
+  /**
+   * Chaîne de filtres Spring Security (Resource Server JWT).
+   */
+  @Bean
+  public SecurityFilterChain api(HttpSecurity http) throws Exception {
+<span class="fc" id="L49">    return http</span>
+<span class="fc" id="L50">      .csrf(csrf -&gt; csrf.disable())</span>
+<span class="fc" id="L51">      .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="fc" id="L52">        .requestMatchers(&quot;/actuator/**&quot;).permitAll()</span>
+<span class="fc" id="L53">        .requestMatchers(HttpMethod.GET, &quot;/notes/**&quot;).hasAnyRole(&quot;PRATICIEN&quot;,&quot;ORGANISATEUR&quot;)</span>
+<span class="fc" id="L54">        .requestMatchers(HttpMethod.POST, &quot;/notes/**&quot;).hasRole(&quot;PRATICIEN&quot;)</span>
+<span class="fc" id="L55">        .requestMatchers(HttpMethod.PUT,  &quot;/notes/**&quot;).hasRole(&quot;PRATICIEN&quot;)</span>
+<span class="fc" id="L56">        .requestMatchers(HttpMethod.DELETE,&quot;/notes/**&quot;).hasRole(&quot;PRATICIEN&quot;)</span>
+<span class="fc" id="L57">        .anyRequest().authenticated()</span>
+      )
+<span class="fc" id="L59">      .oauth2ResourceServer(oauth -&gt; oauth.jwt())</span>
+<span class="fc" id="L60">      .build();</span>
+  }
+
+  /**
+   * Décodeur JWT HS256 basé sur le secret partagé avec auth-service.
+   *
+   * @param secret valeur de {@code JWT_SECRET}
+   */
+  @Bean
+  public JwtDecoder jwtDecoder(@Value(&quot;${JWT_SECRET}&quot;) String secret) {
+<span class="fc" id="L70">    var key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), &quot;HmacSHA256&quot;);</span>
+<span class="fc" id="L71">    return NimbusJwtDecoder.withSecretKey(key).build();</span>
+  }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

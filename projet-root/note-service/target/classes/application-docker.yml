@@ -1,0 +1,7 @@
+spring:
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongo-db:27017/notesdb}
+
+server:
+  port: ${SERVER_PORT:8082}

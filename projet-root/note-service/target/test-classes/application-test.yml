@@ -1,6 +1,10 @@
+JWT_SECRET: test-secret
+
 spring:
   data:
     mongodb:
       host: localhost
       port: 27017
       database: test
+
+logging.level.org.mongodb: WARN
