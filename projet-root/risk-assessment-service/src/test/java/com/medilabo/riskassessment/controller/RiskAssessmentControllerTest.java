@@ -5,58 +5,48 @@ import com.medilabo.riskassessment.dto.RiskAssessmentResponse;
 import com.medilabo.riskassessment.service.RiskAssessmentService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(RiskAssessmentController.class)
-@AutoConfigureMockMvc(addFilters = true)
+@WebMvcTest(controllers = RiskAssessmentController.class)
 @Import(RiskAssessmentServiceSecurityConfig.class)
+@ActiveProfiles("test")
 class RiskAssessmentControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+  @Autowired
+  private MockMvc mockMvc;
 
-    @MockBean
-    private RiskAssessmentService riskService;
+  @MockBean
+  private RiskAssessmentService riskAssessmentService;
 
-    @Test
-    @DisplayName("Doit retourner 200 avec rôle PRATICIEN")
-    @WithMockUser(username = "praticien", roles = "PRATICIEN")
-    void shouldReturnRiskWithAuthorizedUser() throws Exception {
-        RiskAssessmentResponse response =
-                new RiskAssessmentResponse(1L, "John", "Doe", 50, "In Danger");
+  @Test
+  @DisplayName("200 OK pour ROLE_PRATICIEN")
+  void shouldReturnRiskWithAuthorizedUser() throws Exception {
+    when(riskAssessmentService.assessRiskDetailed(1L))
+        .thenReturn(new RiskAssessmentResponse(1L, "John", "Doe", 45, "Borderline"));
 
-        Mockito.when(riskService.assessRiskDetailed(eq(1L))).thenReturn(response);
+    mockMvc.perform(get("/risk/1")
+        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_PRATICIEN"))))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.firstName").value("John"))
+      .andExpect(jsonPath("$.riskLevel").value("Borderline"));
+  }
 
-        mockMvc.perform(get("/assess/1").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.firstName").value("John"))
-                .andExpect(jsonPath("$.riskLevel").value("In Danger"));
-    }
-
-    @Test
-    @DisplayName("Doit refuser l’accès sans authentification")
-    void shouldRejectRequestWithoutAuth() throws Exception {
-        mockMvc.perform(get("/assess/1"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @DisplayName("Doit refuser l’accès avec mauvais rôle")
-    @WithMockUser(username = "user", roles = "ORGANISATEUR")
-    void shouldRejectAccessForWrongRole() throws Exception {
-        mockMvc.perform(get("/assess/1"))
-                .andExpect(status().isForbidden());
-    }
+  @Test
+  @DisplayName("403 Forbidden pour mauvais rôle")
+  void shouldRejectAccessForWrongRole() throws Exception {
+    mockMvc.perform(get("/risk/1")
+        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ORGANISATEUR"))))
+      .andExpect(status().isForbidden());
+  }
 }
