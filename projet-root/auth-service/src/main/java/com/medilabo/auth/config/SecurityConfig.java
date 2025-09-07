@@ -113,7 +113,7 @@ public class SecurityConfig {
                   cookie.setMaxAge(3600);
                   res.addCookie(cookie);
 
-                  res.sendRedirect("http://localhost:8080/patients");
+                  res.sendRedirect("http://gateway-service:8080/patients");
               })
               .failureUrl("/auth/login?error")
               .permitAll()
