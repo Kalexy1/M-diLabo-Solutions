@@ -22,8 +22,7 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
  *   <li><b>CSRF activé</b> pour protéger les formulaires HTML (POST) utilisés dans l’UI.</li>
  *   <li>Accès public à <code>/access-denied</code>.</li>
  *   <li>Authentification requise pour toutes les autres requêtes.</li>
- *   <li>Page de connexion personnalisée : <code>/auth/login</code>.</li>
- *   <li>Redirection post-authentification vers <code>/patients</code>.</li>
+ *   <li>Les requêtes sont authentifiées via un JWT présent dans l'en-tête <code>Authorization</code>.</li>
  *   <li>Redirection en cas d'accès refusé : <code>/access-denied</code>.</li>
  * </ul>
  * </p>
@@ -47,23 +46,9 @@ public class SecurityConfig {
                 .requestMatchers("/access-denied").permitAll()
                 .anyRequest().authenticated()
             )
-            .formLogin(form -> form
-                .loginPage("/auth/login").permitAll()
-                .successHandler(successHandler())
-            )
             .exceptionHandling(ex -> ex
                 .accessDeniedPage("/access-denied")
             )
             .build();
-    }
-
-    /**
-     * Définit le handler exécuté après une authentification réussie.
-     *
-     * @return un {@link AuthenticationSuccessHandler} redirigeant vers <code>/patients</code>.
-     */
-    @Bean
-    public AuthenticationSuccessHandler successHandler() {
-        return new SimpleUrlAuthenticationSuccessHandler("/patients");
     }
 }

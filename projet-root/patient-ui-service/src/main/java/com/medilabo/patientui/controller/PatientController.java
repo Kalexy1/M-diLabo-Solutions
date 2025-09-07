@@ -77,7 +77,7 @@ public class PatientController {
             notesByPatient.put(p.getId(), noteService.getNotesByPatientId(p.getId()));
             try {
                 RiskAssessmentResponse risk = restTemplate.getForObject(
-                        GATEWAY_BASE_URL + "/risk/assess/" + p.getId(),
+                        GATEWAY_BASE_URL + "/risk/" + p.getId(),
                         RiskAssessmentResponse.class
                 );
                 riskByPatient.put(p.getId(), risk != null ? risk.getRiskLevel() : "Non disponible");
@@ -197,7 +197,7 @@ public class PatientController {
         Patient patient = patientService.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
         RiskAssessmentResponse risk = restTemplate.getForObject(
-                GATEWAY_BASE_URL + "/risk/assess/" + id,
+                GATEWAY_BASE_URL + "/risk/" + id,
                 RiskAssessmentResponse.class
         );
         model.addAttribute("patient", patient);
@@ -233,7 +233,7 @@ public class PatientController {
         Patient patient = patientService.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
         RiskAssessmentResponse risk = restTemplate.getForObject(
-                GATEWAY_BASE_URL + "/risk/assess/" + id,
+                GATEWAY_BASE_URL + "/risk/" + id,
                 RiskAssessmentResponse.class
         );
 

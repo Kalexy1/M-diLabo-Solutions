@@ -44,11 +44,10 @@ class SecurityConfigTest {
     private RestTemplate restTemplate;
 
     @Test
-    @DisplayName("🔒 Accès non autorisé redirige vers /auth/login")
-    void shouldRedirectToLoginWhenUnauthenticated() throws Exception {
+    @DisplayName("🔒 Accès non autorisé renvoie 403")
+    void shouldReturnForbiddenWhenUnauthenticated() throws Exception {
         mockMvc.perform(get("/patients"))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrlPattern("**/auth/login"));
+            .andExpect(status().isForbidden());
     }
 
     @Test
