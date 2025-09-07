@@ -1,63 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="fr"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PatientServiceSecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">patient-service</a> &gt; <a href="index.source.html" class="el_package">com.medilabo.patientservice.config</a> &gt; <span class="el_source">PatientServiceSecurityConfig.java</span></div><h1>PatientServiceSecurityConfig.java</h1><pre class="source lang-java linenums">package com.medilabo.patientservice.config;
 
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * Application: com.medilabo.patientservice.config
  * &lt;p&gt;
- * Classe &lt;strong&gt;PatientServiceSecurityConfig&lt;/strong&gt;.
+ * Classe &lt;strong&gt;SecurityConfig&lt;/strong&gt;.
  * &lt;br/&gt;
- * Rôle : Configuration de la sécurité pour le microservice &lt;em&gt;patient-service&lt;/em&gt;.
- * Active la sécurité via formulaire et l'utilisation des annotations {@code @PreAuthorize}.
+ * Rôle : Configure la sécurité pour le microservice &lt;em&gt;patient-service&lt;/em&gt;
+ * en tant que &lt;b&gt;Resource Server JWT&lt;/b&gt;.
  * &lt;/p&gt;
- * &lt;p&gt;
- * Détails :
+ *
+ * &lt;h3&gt;Principes de configuration&lt;/h3&gt;
  * &lt;ul&gt;
- *   &lt;li&gt;CSRF désactivé (API REST derrière la Gateway).&lt;/li&gt;
- *   &lt;li&gt;La page &lt;code&gt;/access-denied&lt;/code&gt; est accessible publiquement.&lt;/li&gt;
- *   &lt;li&gt;Toutes les autres requêtes nécessitent une authentification.&lt;/li&gt;
- *   &lt;li&gt;Form login délégué à la page &lt;code&gt;/auth/login&lt;/code&gt; (exposée via Gateway).&lt;/li&gt;
- *   &lt;li&gt;Déconnexion sur &lt;code&gt;/logout&lt;/code&gt; avec redirection vers &lt;code&gt;/auth/login?logout&lt;/code&gt;.&lt;/li&gt;
- *   &lt;li&gt;Gestion d'accès refusé : redirection vers la vue &lt;code&gt;/access-denied&lt;/code&gt;.&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;CSRF désactivé&lt;/b&gt; car il s’agit d’une API REST sans formulaires HTML.&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;Endpoints Actuator&lt;/b&gt; exposés sans restriction pour la supervision.&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;Accès restreints&lt;/b&gt; sur les endpoints &lt;code&gt;/patients/**&lt;/code&gt; :
+ *     &lt;ul&gt;
+ *       &lt;li&gt;&lt;code&gt;GET&lt;/code&gt; → réservé aux rôles &lt;code&gt;ROLE_PRATICIEN&lt;/code&gt; ou &lt;code&gt;ROLE_ORGANISATEUR&lt;/code&gt;.&lt;/li&gt;
+ *       &lt;li&gt;&lt;code&gt;POST&lt;/code&gt;, &lt;code&gt;PUT&lt;/code&gt;, &lt;code&gt;DELETE&lt;/code&gt; → réservés au rôle &lt;code&gt;ROLE_ORGANISATEUR&lt;/code&gt;.&lt;/li&gt;
+ *     &lt;/ul&gt;
+ *   &lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;Toutes les autres requêtes&lt;/b&gt; nécessitent un JWT valide.&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;Les rôles&lt;/b&gt; doivent être stockés avec le préfixe &lt;code&gt;ROLE_&lt;/code&gt; en base de données.&lt;/li&gt;
  * &lt;/ul&gt;
- * &lt;/p&gt;
  */
 @Configuration
 @EnableMethodSecurity
-<span class="fc" id="L31">public class PatientServiceSecurityConfig {</span>
+<span class="fc" id="L41">public class PatientServiceSecurityConfig {</span>
 
     /**
-     * Configure la chaîne de filtres Spring Security pour le service patient.
+     * Configure la chaîne de filtres Spring Security pour le microservice patient.
      *
-     * @param http objet de configuration HTTP Security.
-     * @return la {@link SecurityFilterChain} configurée.
-     * @throws Exception en cas de problème de configuration.
+     * &lt;p&gt;
+     * Cette configuration :
+     * &lt;ul&gt;
+     *   &lt;li&gt;Désactive CSRF.&lt;/li&gt;
+     *   &lt;li&gt;Définit les règles d’accès par HTTP method et path.&lt;/li&gt;
+     *   &lt;li&gt;Active l’utilisation d’un Resource Server JWT pour valider les tokens
+     *       signés par l’auth-service.&lt;/li&gt;
+     * &lt;/ul&gt;
+     * &lt;/p&gt;
+     *
+     * @param http objet {@link HttpSecurity} fourni par Spring Security
+     * @return une instance configurée de {@link SecurityFilterChain}
+     * @throws Exception si une erreur survient lors de la configuration
      */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-<span class="fc" id="L42">        return http</span>
-<span class="fc" id="L43">            .csrf(csrf -&gt; csrf.disable())</span>
-<span class="fc" id="L44">            .authorizeHttpRequests(auth -&gt; auth</span>
-<span class="fc" id="L45">                .requestMatchers(&quot;/access-denied&quot;).permitAll()</span>
-<span class="fc" id="L46">                .anyRequest().authenticated()</span>
+    public SecurityFilterChain api(HttpSecurity http) throws Exception {
+<span class="fc" id="L62">        return http</span>
+<span class="fc" id="L63">            .csrf(csrf -&gt; csrf.disable())</span>
+<span class="fc" id="L64">            .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="fc" id="L65">                .requestMatchers(&quot;/actuator/**&quot;).permitAll()</span>
+<span class="fc" id="L66">                .requestMatchers(HttpMethod.GET, &quot;/patients/**&quot;)</span>
+<span class="fc" id="L67">                    .hasAnyRole(&quot;PRATICIEN&quot;, &quot;ORGANISATEUR&quot;)</span>
+<span class="fc" id="L68">                .requestMatchers(HttpMethod.POST, &quot;/patients/**&quot;).hasRole(&quot;ORGANISATEUR&quot;)</span>
+<span class="fc" id="L69">                .requestMatchers(HttpMethod.PUT,  &quot;/patients/**&quot;).hasRole(&quot;ORGANISATEUR&quot;)</span>
+<span class="fc" id="L70">                .requestMatchers(HttpMethod.DELETE, &quot;/patients/**&quot;).hasRole(&quot;ORGANISATEUR&quot;)</span>
+<span class="fc" id="L71">                .anyRequest().authenticated()</span>
             )
-<span class="fc" id="L48">            .formLogin(form -&gt; form</span>
-<span class="fc" id="L49">                .loginPage(&quot;/auth/login&quot;)</span>
-<span class="fc" id="L50">                .permitAll()</span>
-            )
-<span class="fc" id="L52">            .logout(logout -&gt; logout</span>
-<span class="fc" id="L53">                .logoutUrl(&quot;/logout&quot;)</span>
-<span class="fc" id="L54">                .logoutSuccessUrl(&quot;/auth/login?logout&quot;)</span>
-<span class="fc" id="L55">                .permitAll()</span>
-            )
-<span class="fc" id="L57">            .exceptionHandling(ex -&gt; ex</span>
-<span class="fc" id="L58">                .accessDeniedPage(&quot;/access-denied&quot;)</span>
-            )
-<span class="fc" id="L60">            .build();</span>
+<span class="fc" id="L73">            .oauth2ResourceServer(oauth -&gt; oauth.jwt())</span>
+<span class="fc" id="L74">            .build();</span>
+    }
+
+    /**
+     * Fournit un décodeur JWT basé sur l’algorithme HMAC-SHA256.
+     *
+     * &lt;p&gt;
+     * Le secret est injecté via la propriété/variable d’environnement
+     * &lt;code&gt;JWT_SECRET&lt;/code&gt;, qui doit être identique à celui utilisé
+     * par l’auth-service pour signer les tokens.
+     * &lt;/p&gt;
+     *
+     * @param secret la valeur du secret HMAC, injectée depuis la configuration
+     * @return une instance de {@link JwtDecoder} configurée pour HS256
+     */
+    @Bean
+    public JwtDecoder jwtDecoder(@Value(&quot;${JWT_SECRET}&quot;) String secret) {
+<span class="fc" id="L91">        var key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), &quot;HmacSHA256&quot;);</span>
+<span class="fc" id="L92">        return NimbusJwtDecoder.withSecretKey(key).build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

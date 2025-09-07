@@ -1,0 +1,20 @@
+server:
+  port: ${SERVER_PORT:8081}
+spring:
+  application:
+    name: patient-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
