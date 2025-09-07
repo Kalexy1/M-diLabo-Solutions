@@ -12,8 +12,13 @@ services:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-    networks:
-      - backend
+      - ./mysql-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-padmin.01234"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [backend]
 
   mongo:
     image: mongo:5.0
@@ -23,100 +28,105 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
-    networks:
-      - backend
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [backend]
+
+  auth-service:
+    build: { context: ./auth-service }
+    container_name: auth-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8085
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/authdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: admin.01234
+      JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: [ "8085:8085" ]
+    networks: [backend]
 
   patient-service:
-    build:
-      context: ./patient-service
+    build: { context: ./patient-service }
     container_name: patient-service
-    ports:
-      - "8081:8081"
-    depends_on:
-      - mysql
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/patientdb
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/patientdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: admin.01234
-    networks:
-      - backend
+      JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: [ "8081:8081" ]
+    networks: [backend]
 
   note-service:
-    build:
-      context: ./note-service
+    build: { context: ./note-service }
     container_name: note-service
-    ports:
-      - "8083:8083"
-    depends_on:
-      - mongo
     environment:
-      SPRING_DATA_MONGODB_HOST: mongo
-      SPRING_DATA_MONGODB_PORT: 27017
-      SPRING_DATA_MONGODB_DATABASE: notesdb
-    networks:
-      - backend
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8082
+      SPRING_DATA_MONGODB_URI: mongodb://mongo-db:27017/notesdb
+      JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
+    depends_on:
+      mongo: { condition: service_healthy }
+    ports: [ "8082:8082" ]
+    networks: [backend]
 
   gateway-service:
-    build:
-      context: ./gateway-service
+    build: { context: ./gateway-service }
     container_name: gateway-service
-    ports:
-      - "8080:8080"
-    depends_on:
-      - patient-service
-      - auth-service
-    environment:                   
-      JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
-    networks:
-      - backend
-
-  patient-ui-service:
-    build:
-      context: ./patient-ui-service
-    container_name: patient-ui-service
-    ports:
-      - "8082:8082"
-    depends_on:
-      - mysql
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/patientdb
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: admin.01234
-    networks:
-      - backend
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8080
+      JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
+    depends_on:
+      - auth-service
+      - patient-service
+      - note-service
+    ports: [ "8080:8080" ]
+    networks: [backend]
 
   risk-assessment-service:
-    build:
-      context: ./risk-assessment-service
+    build: { context: ./risk-assessment-service }
     container_name: risk-assessment-service
-    ports:
-      - "8084:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8083
+      PATIENT_API_BASE_URL: http://gateway-service:8080/patients
+      NOTE_API_BASE_URL: http://gateway-service:8080/notes
+      JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
     depends_on:
       - patient-service
       - note-service
-    networks:
-      - backend
+    ports: [ "8083:8083" ]
+    networks: [backend]
 
-  auth-service:
-    build:
-      context: ./auth-service
-    container_name: auth-service
-    ports:
-      - "8085:8085"
-    depends_on:
-      - mysql
+  patient-ui-service:
+    build: { context: ./patient-ui-service }
+    container_name: patient-ui-service
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/patientdb
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8084
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/patientdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: admin.01234
-      JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
- 
-    networks:
-      - backend
+      PATIENT_API_BASE_URL: http://gateway-service:8080/patients
+      NOTE_API_BASE_URL:    http://gateway-service:8080/notes
+      RISK_API_BASE_URL:    http://gateway-service:8080/risk
+      AUTH_API_BASE_URL:    http://gateway-service:8080/auth
+    depends_on:
+      - gateway-service
+    ports: [ "8084:8084" ]
+    networks: [backend]
 
 networks:
-  backend:
-    driver: bridge
+  backend: { driver: bridge }
 
 volumes:
   mysql-data:
