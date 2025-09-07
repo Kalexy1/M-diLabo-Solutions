@@ -10,31 +10,47 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 /**
- * Configuration de la sécurité pour le microservice {@code auth-service}.
- *
+ * Application: com.medilabo.auth.config
  * &lt;p&gt;
- * Cette classe définit les règles de sécurité et la gestion de l’authentification.
- * Elle utilise Spring Security avec un formulaire de login personnalisé
- * et génère un JWT pour chaque utilisateur authentifié.
+ * Classe &lt;strong&gt;SecurityConfig&lt;/strong&gt;.
+ * &lt;br/&gt;
+ * Rôle : Configure la sécurité pour le microservice &lt;em&gt;auth-service&lt;/em&gt;.
  * &lt;/p&gt;
  *
- * &lt;h3&gt;Fonctionnalités principales&lt;/h3&gt;
+ * &lt;h3&gt;Fonctionnalités principales :&lt;/h3&gt;
  * &lt;ul&gt;
- *   &lt;li&gt;Autorise l’accès public à certaines routes : {@code /auth/register}, {@code /auth/login},
- *       {@code /access-denied}, ressources statiques.&lt;/li&gt;
- *   &lt;li&gt;Exige une authentification pour toutes les autres routes.&lt;/li&gt;
- *   &lt;li&gt;Après une connexion réussie :
+ *   &lt;li&gt;Active la protection CSRF avec stockage du token dans un cookie
+ *       (lisible côté client pour l’intégration avec Thymeleaf).&lt;/li&gt;
+ *   &lt;li&gt;Autorise l’accès public aux routes :
+ *       &lt;ul&gt;
+ *         &lt;li&gt;&lt;code&gt;/auth/register&lt;/code&gt; → inscription&lt;/li&gt;
+ *         &lt;li&gt;&lt;code&gt;/auth/login&lt;/code&gt; → formulaire de login&lt;/li&gt;
+ *         &lt;li&gt;&lt;code&gt;/access-denied&lt;/code&gt; → page d’accès refusé&lt;/li&gt;
+ *         &lt;li&gt;&lt;code&gt;/logout&lt;/code&gt; → déconnexion&lt;/li&gt;
+ *         &lt;li&gt;ressources statiques (&lt;code&gt;/css/**&lt;/code&gt;, &lt;code&gt;/js/**&lt;/code&gt;, &lt;code&gt;/images/**&lt;/code&gt;)&lt;/li&gt;
+ *         &lt;li&gt;Actuator (&lt;code&gt;/actuator/**&lt;/code&gt;)&lt;/li&gt;
+ *       &lt;/ul&gt;
+ *   &lt;/li&gt;
+ *   &lt;li&gt;Exige une authentification pour toutes les autres requêtes.&lt;/li&gt;
+ *   &lt;li&gt;Configure un formulaire de login personnalisé sur &lt;code&gt;/auth/login&lt;/code&gt;.&lt;/li&gt;
+ *   &lt;li&gt;À la connexion réussie :
  *     &lt;ul&gt;
- *       &lt;li&gt;Un JWT signé est généré via {@link JwtIssuer}.&lt;/li&gt;
- *       &lt;li&gt;Le JWT est placé dans un cookie HttpOnly {@code ACCESS_TOKEN} (valide 1h).&lt;/li&gt;
- *       &lt;li&gt;L’utilisateur est redirigé vers {@code /ui/patients} via le gateway.&lt;/li&gt;
+ *       &lt;li&gt;Un JWT est généré via {@link JwtIssuer}.&lt;/li&gt;
+ *       &lt;li&gt;Le JWT est stocké dans un cookie HttpOnly nommé &lt;code&gt;ACCESS_TOKEN&lt;/code&gt; valable 1h.&lt;/li&gt;
+ *       &lt;li&gt;L’utilisateur est redirigé vers &lt;code&gt;/patients&lt;/code&gt; (via le Gateway).&lt;/li&gt;
  *     &lt;/ul&gt;
  *   &lt;/li&gt;
- *   &lt;li&gt;En cas d’échec de connexion, redirige vers {@code /auth/login?error}.&lt;/li&gt;
- *   &lt;li&gt;À la déconnexion, le cookie {@code ACCESS_TOKEN} est supprimé et
- *       l’utilisateur est redirigé vers {@code /auth/login?logout}.&lt;/li&gt;
+ *   &lt;li&gt;En cas d’échec → redirection vers &lt;code&gt;/auth/login?error&lt;/code&gt;.&lt;/li&gt;
+ *   &lt;li&gt;À la déconnexion :
+ *     &lt;ul&gt;
+ *       &lt;li&gt;Le cookie &lt;code&gt;ACCESS_TOKEN&lt;/code&gt; est supprimé.&lt;/li&gt;
+ *       &lt;li&gt;Redirection vers &lt;code&gt;/auth/login?logout&lt;/code&gt;.&lt;/li&gt;
+ *     &lt;/ul&gt;
+ *   &lt;/li&gt;
+ *   &lt;li&gt;Page d’accès refusé définie sur &lt;code&gt;/access-denied&lt;/code&gt;.&lt;/li&gt;
  * &lt;/ul&gt;
  */
 @Configuration
@@ -42,83 +58,91 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    /**
-     * Composant responsable de la génération des JWT.
-     */
+    /** Service responsable de la génération des JWT. */
     private final JwtIssuer jwtIssuer;
 
     /**
-     * Constructeur qui injecte le générateur de JWT.
+     * Constructeur avec injection de dépendance.
      *
-     * @param jwtIssuer service permettant d’émettre des JWT signés
+     * @param jwtIssuer service permettant de créer des JWT signés
      */
-<span class="fc" id="L55">    public SecurityConfig(JwtIssuer jwtIssuer) {</span>
-<span class="fc" id="L56">        this.jwtIssuer = jwtIssuer;</span>
-<span class="fc" id="L57">    }</span>
+<span class="fc" id="L69">    public SecurityConfig(JwtIssuer jwtIssuer) {</span>
+<span class="fc" id="L70">        this.jwtIssuer = jwtIssuer;</span>
+<span class="fc" id="L71">    }</span>
 
     /**
-     * Chaîne de filtres de sécurité HTTP.
+     * Définit la chaîne de filtres Spring Security pour l’application.
      *
-     * &lt;p&gt;
-     * Définit les règles d’accès, la gestion du formulaire de login et
-     * le traitement personnalisé après authentification ou déconnexion.
-     * &lt;/p&gt;
+     * &lt;p&gt;Points clés :&lt;/p&gt;
+     * &lt;ul&gt;
+     *   &lt;li&gt;CSRF activé avec {@link CookieCsrfTokenRepository} (token envoyé dans un cookie).&lt;/li&gt;
+     *   &lt;li&gt;Autorisation des routes publiques.&lt;/li&gt;
+     *   &lt;li&gt;Formulaire de login configuré sur &lt;code&gt;/auth/login&lt;/code&gt;.&lt;/li&gt;
+     *   &lt;li&gt;Gestion de la génération et de la suppression du cookie JWT.&lt;/li&gt;
+     *   &lt;li&gt;Page d’accès refusé personnalisée.&lt;/li&gt;
+     * &lt;/ul&gt;
      *
-     * @param http objet {@link HttpSecurity} fourni par Spring
-     * @return la configuration complète de la sécurité
-     * @throws Exception si un problème survient lors de la configuration
+     * @param http objet {@link HttpSecurity} configuré par Spring
+     * @return la {@link SecurityFilterChain} résultante
+     * @throws Exception en cas d’erreur de configuration
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-<span class="fc" id="L73">        http</span>
-<span class="fc" id="L74">            .authorizeHttpRequests(auth -&gt; auth</span>
-<span class="fc" id="L75">                .requestMatchers(</span>
-<span class="fc" id="L76">                    &quot;/auth/register&quot;, &quot;/auth/login&quot;, &quot;/access-denied&quot;,</span>
-<span class="fc" id="L77">                    &quot;/logout&quot;, &quot;/css/**&quot;, &quot;/js/**&quot;, &quot;/images/**&quot;</span>
-<span class="fc" id="L78">                ).permitAll()</span>
-<span class="fc" id="L79">                .anyRequest().authenticated()</span>
-            )
-<span class="fc" id="L81">            .formLogin(form -&gt; form</span>
-<span class="fc" id="L82">                .loginPage(&quot;/auth/login&quot;)</span>
-<span class="fc" id="L83">                .loginProcessingUrl(&quot;/auth/login&quot;)</span>
-<span class="fc" id="L84">                .successHandler((req, res, authentication) -&gt; {</span>
-<span class="nc" id="L85">                    String token = jwtIssuer.issue(authentication.getName(),</span>
-<span class="nc" id="L86">                            authentication.getAuthorities().stream().toList());</span>
+<span class="fc" id="L91">        http</span>
+<span class="fc" id="L92">          .csrf(csrf -&gt; csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))</span>
+<span class="fc" id="L93">          .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="fc" id="L94">              .requestMatchers(</span>
+                  &quot;/auth/register&quot;, &quot;/auth/login&quot;, &quot;/access-denied&quot;,
+                  &quot;/logout&quot;, &quot;/css/**&quot;, &quot;/js/**&quot;, &quot;/images/**&quot;,
+                  &quot;/actuator/**&quot;
+<span class="fc" id="L98">              ).permitAll()</span>
+<span class="fc" id="L99">              .anyRequest().authenticated()</span>
+          )
+<span class="fc" id="L101">          .formLogin(form -&gt; form</span>
+<span class="fc" id="L102">              .loginPage(&quot;/auth/login&quot;)</span>
+<span class="fc" id="L103">              .loginProcessingUrl(&quot;/auth/login&quot;)</span>
+<span class="fc" id="L104">              .successHandler((req, res, authentication) -&gt; {</span>
+<span class="nc" id="L105">                  String token = jwtIssuer.issue(</span>
+<span class="nc" id="L106">                      authentication.getName(),</span>
+<span class="nc" id="L107">                      authentication.getAuthorities().stream().toList()</span>
+                  );
 
-<span class="nc" id="L88">                    Cookie cookie = new Cookie(&quot;ACCESS_TOKEN&quot;, token);</span>
-<span class="nc" id="L89">                    cookie.setHttpOnly(true);</span>
-<span class="nc" id="L90">                    cookie.setPath(&quot;/&quot;);</span>
-<span class="nc" id="L91">                    cookie.setMaxAge(3600); // 1h</span>
+<span class="nc" id="L110">                  Cookie cookie = new Cookie(&quot;ACCESS_TOKEN&quot;, token);</span>
+<span class="nc" id="L111">                  cookie.setHttpOnly(true);</span>
+<span class="nc" id="L112">                  cookie.setPath(&quot;/&quot;);</span>
+<span class="nc" id="L113">                  cookie.setMaxAge(3600);</span>
+<span class="nc" id="L114">                  res.addCookie(cookie);</span>
 
-<span class="nc" id="L93">                    res.addCookie(cookie);</span>
-<span class="nc" id="L94">                    res.sendRedirect(&quot;/ui/patients&quot;);</span>
-<span class="nc" id="L95">                })</span>
-<span class="fc" id="L96">                .failureUrl(&quot;/auth/login?error&quot;)</span>
-<span class="fc" id="L97">                .permitAll()</span>
-            )
-<span class="fc" id="L99">            .logout(logout -&gt; logout</span>
-<span class="fc" id="L100">                .logoutUrl(&quot;/logout&quot;)</span>
-<span class="fc" id="L101">                .addLogoutHandler((req, res, auth) -&gt; {</span>
-<span class="nc" id="L102">                    Cookie cookie = new Cookie(&quot;ACCESS_TOKEN&quot;, &quot;&quot;);</span>
-<span class="nc" id="L103">                    cookie.setHttpOnly(true);</span>
-<span class="nc" id="L104">                    cookie.setPath(&quot;/&quot;);</span>
-<span class="nc" id="L105">                    cookie.setMaxAge(0);</span>
-<span class="nc" id="L106">                    res.addCookie(cookie);</span>
-<span class="nc" id="L107">                })</span>
-<span class="fc" id="L108">                .logoutSuccessUrl(&quot;/auth/login?logout&quot;)</span>
-<span class="fc" id="L109">                .permitAll()</span>
-            );
-<span class="fc" id="L111">        return http.build();</span>
+<span class="nc" id="L116">                  res.sendRedirect(&quot;http://localhost:8080/patients&quot;);</span>
+<span class="nc" id="L117">              })</span>
+<span class="fc" id="L118">              .failureUrl(&quot;/auth/login?error&quot;)</span>
+<span class="fc" id="L119">              .permitAll()</span>
+          )
+<span class="fc" id="L121">          .logout(logout -&gt; logout</span>
+<span class="fc" id="L122">              .logoutUrl(&quot;/logout&quot;)</span>
+<span class="fc" id="L123">              .addLogoutHandler((req, res, auth) -&gt; {</span>
+<span class="nc" id="L124">                  Cookie cookie = new Cookie(&quot;ACCESS_TOKEN&quot;, &quot;&quot;);</span>
+<span class="nc" id="L125">                  cookie.setHttpOnly(true);</span>
+<span class="nc" id="L126">                  cookie.setPath(&quot;/&quot;);</span>
+<span class="nc" id="L127">                  cookie.setMaxAge(0);</span>
+<span class="nc" id="L128">                  res.addCookie(cookie);</span>
+<span class="nc" id="L129">              })</span>
+<span class="fc" id="L130">              .logoutSuccessUrl(&quot;/auth/login?logout&quot;)</span>
+<span class="fc" id="L131">              .permitAll()</span>
+          )
+<span class="fc" id="L133">          .exceptionHandling(e -&gt; e.accessDeniedPage(&quot;/access-denied&quot;));</span>
+
+<span class="fc" id="L135">        return http.build();</span>
     }
 
     /**
-     * Bean {@link PasswordEncoder} basé sur l’algorithme BCrypt.
+     * Fournit un encodeur de mots de passe utilisant BCrypt.
      *
-     * @return un encodeur de mots de passe sécurisé
+     * @return une instance de {@link PasswordEncoder}
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
-<span class="fc" id="L121">        return new BCryptPasswordEncoder();</span>
+<span class="fc" id="L145">        return new BCryptPasswordEncoder();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

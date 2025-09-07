@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.medilabo.auth.AuthServiceApplicationTests
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.642 s -- in com.medilabo.auth.AuthServiceApplicationTests
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.816 s -- in com.medilabo.auth.AuthServiceApplicationTests
