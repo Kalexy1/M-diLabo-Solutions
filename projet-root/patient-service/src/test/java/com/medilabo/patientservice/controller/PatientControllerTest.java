@@ -1,9 +1,8 @@
 package com.medilabo.patientservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.medilabo.patientservice.model.Patient;
-import com.medilabo.patientservice.repository.PatientRepository;
+import com.medilabo.patientservice.service.PatientService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +26,7 @@ class PatientControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private PatientRepository repository;
+    private PatientService service;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -36,7 +35,7 @@ class PatientControllerTest {
 
     @BeforeEach
     void setUp() {
-        repository.deleteAll();
+        service.getAll().forEach(p -> service.delete(p.getId()));
         testPatient = new Patient();
         testPatient.setPrenom("Alice");
         testPatient.setNom("Durand");
@@ -45,7 +44,7 @@ class PatientControllerTest {
         testPatient.setAdresse("7 rue du Test");
         testPatient.setTelephone("0123456789");
 
-        testPatient = repository.save(testPatient);
+        testPatient = service.create(testPatient);
     }
 
     @Test

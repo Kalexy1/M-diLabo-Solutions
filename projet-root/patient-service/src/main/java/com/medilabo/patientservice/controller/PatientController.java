@@ -1,7 +1,7 @@
 package com.medilabo.patientservice.controller;
 
 import com.medilabo.patientservice.model.Patient;
-import com.medilabo.patientservice.repository.PatientRepository;
+import com.medilabo.patientservice.service.PatientService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +19,7 @@ import java.util.List;
 public class PatientController {
 
     @Autowired
-    private PatientRepository repository;
+    private PatientService patientService;
 
     /**
      * Récupère la liste de tous les patients.
@@ -28,7 +28,7 @@ public class PatientController {
      */
     @GetMapping
     public List<Patient> getAll() {
-        return repository.findAll();
+        return patientService.getAll();
     }
 
     /**
@@ -39,7 +39,7 @@ public class PatientController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Patient> getOne(@PathVariable Long id) {
-        return repository.findById(id)
+        return patientService.getById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -52,7 +52,7 @@ public class PatientController {
      */
     @PostMapping
     public Patient create(@RequestBody Patient patient) {
-        return repository.save(patient);
+        return patientService.create(patient);
     }
 
     /**
@@ -64,15 +64,9 @@ public class PatientController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Patient> update(@PathVariable Long id, @RequestBody Patient updatedPatient) {
-        return repository.findById(id).map(patient -> {
-            patient.setPrenom(updatedPatient.getPrenom());
-            patient.setNom(updatedPatient.getNom());
-            patient.setDateNaissance(updatedPatient.getDateNaissance());
-            patient.setGenre(updatedPatient.getGenre());
-            patient.setAdresse(updatedPatient.getAdresse());
-            patient.setTelephone(updatedPatient.getTelephone());
-            return ResponseEntity.ok(repository.save(patient));
-        }).orElse(ResponseEntity.notFound().build());
+        return patientService.update(id, updatedPatient)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     /**
@@ -83,8 +77,7 @@ public class PatientController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
+        if (patientService.delete(id)) {
             return ResponseEntity.ok().build();
         } else {
             return ResponseEntity.notFound().build();
