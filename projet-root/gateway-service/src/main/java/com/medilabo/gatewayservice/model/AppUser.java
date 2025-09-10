@@ -93,6 +93,10 @@ public class AppUser {
      * @throws IllegalArgumentException si le rôle est invalide
      */
     public void setRole(String role) {
+        if (role == null || role.isBlank()) {
+            throw new IllegalArgumentException("Le rôle est requis.");
+        }
+
         String formattedRole = role.toUpperCase();
         if (!formattedRole.startsWith("ROLE_")) {
             formattedRole = "ROLE_" + formattedRole;

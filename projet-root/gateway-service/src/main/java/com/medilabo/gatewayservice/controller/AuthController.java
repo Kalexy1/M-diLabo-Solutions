@@ -2,8 +2,11 @@ package com.medilabo.gatewayservice.controller;
 
 import com.medilabo.gatewayservice.model.AppUser;
 import com.medilabo.gatewayservice.repository.UserRepository;
+import com.medilabo.gatewayservice.service.UserService;
+
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,11 +21,8 @@ import org.springframework.web.bind.annotation.*;
 @Controller
 public class AuthController {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+	@Autowired
+	private UserService userService;
 
     /**
      * Affiche la page de connexion de l'utilisateur.
@@ -57,13 +57,19 @@ public class AuthController {
      * @return une redirection vers la page de connexion si l'inscription réussit, sinon la page d'inscription avec erreurs
      */
     @PostMapping("/register")
-    public String processRegister(@ModelAttribute @Valid AppUser user,
+    public String processRegister(@ModelAttribute("user") @Valid AppUser user,
                                   BindingResult result,
                                   Model model) {
 
-        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+        if (result.hasErrors()) {
+            return "register";
+        }
+
+        try {
+            userService.existsByUsername(user.getUsername());
             model.addAttribute("error", "Ce nom d'utilisateur existe déjà.");
             return "register";
+        } catch (UsernameNotFoundException ex) {
         }
 
         try {
@@ -73,12 +79,11 @@ public class AuthController {
             return "register";
         }
 
-        if (result.hasErrors()) {
-            return "register";
+        String role = user.getRole();
+        if (role.startsWith("ROLE_")) {
+            role = role.substring(5);
         }
-
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        userRepository.save(user);
+        userService.register(user);
         return "redirect:/login";
     }
 }

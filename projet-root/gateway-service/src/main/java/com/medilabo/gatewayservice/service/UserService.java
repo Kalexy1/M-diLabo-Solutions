@@ -1,52 +1,42 @@
 package com.medilabo.gatewayservice.service;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import com.medilabo.gatewayservice.model.AppUser;
+import com.medilabo.gatewayservice.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
- * Simple in-memory user service allowing dynamic registration of users.
+ * Service handling user registration and lookup operations.
  */
 @Service
-public class UserService implements UserDetailsService {
+public class UserService {
 
-    private final Map<String, UserDetails> users = new ConcurrentHashMap<>();
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        users.put("admin", User.withUsername("admin")
-                                .password(passwordEncoder.encode("password"))
-                                .roles("ADMIN")
-                                .build());
     }
 
     /**
-     * Register a new user with the given credentials.
+     * Returns {@code true} if a user with the given username already exists.
      *
-     * @param username the username
-     * @param rawPassword the raw password
-     * @param role user role
+     * @param username the username to check
+     * @return {@code true} if the username is already used
      */
-    public void register(String username, String rawPassword, String role) {
-        users.put(username, User.withUsername(username)
-                                .password(passwordEncoder.encode(rawPassword))
-                                .roles(role)
-                                .build());
+    public boolean existsByUsername(String username) {
+        return userRepository.findByUsername(username).isPresent();
     }
 
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UserDetails user = users.get(username);
-        if (user == null) {
-            throw new UsernameNotFoundException("User not found: " + username);
-        }
-        return user;
+    /**
+     * Registers a new user after encoding the password.
+     *
+     * @param user the user to register
+     * @return the persisted user
+     */
+    public AppUser register(AppUser user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        return userRepository.save(user);
     }
 }

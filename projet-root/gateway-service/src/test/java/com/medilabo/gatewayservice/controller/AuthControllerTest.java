@@ -1,8 +1,15 @@
 package com.medilabo.gatewayservice.controller;
 
-import com.medilabo.gatewayservice.config.SecurityConfig;
-import com.medilabo.gatewayservice.model.AppUser;
-import com.medilabo.gatewayservice.repository.UserRepository;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,17 +17,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.Optional;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.medilabo.gatewayservice.config.SecurityConfig;
+import com.medilabo.gatewayservice.model.AppUser;
+import com.medilabo.gatewayservice.service.UserService;
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc
@@ -31,10 +33,7 @@ class AuthControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private UserRepository userRepository;
-
-    @MockBean
-    private PasswordEncoder passwordEncoder;
+    private UserService userService;
 
     private AppUser newUser;
 
@@ -64,9 +63,8 @@ class AuthControllerTest {
 
     @Test
     void shouldRegisterNewUserSuccessfully() throws Exception {
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("password")).thenReturn("encodedPassword");
-        when(userRepository.save(any(AppUser.class))).thenReturn(newUser);
+        when(userService.existsByUsername("testuser")).thenReturn(false);
+        when(userService.register(any(AppUser.class))).thenReturn(newUser);
 
         mockMvc.perform(post("/register")
                         .param("username", "testuser")
@@ -75,5 +73,16 @@ class AuthControllerTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    void shouldFailRegistrationWhenRoleMissing() throws Exception {
+        mockMvc.perform(post("/register")
+                        .param("username", "testuser")
+                        .param("password", "password")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("user", "role"));
     }
 }

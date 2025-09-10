@@ -1,21 +1,25 @@
 package com.medilabo.gatewayservice.service;
 
+import com.medilabo.gatewayservice.model.AppUser;
+import com.medilabo.gatewayservice.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -24,32 +28,34 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "ENC(" + invocation.getArgument(0) + ")");
-        userService = new UserService(passwordEncoder);
+        userService = new UserService(userRepository, passwordEncoder);
     }
 
     @Test
-    void shouldLoadDefaultAdmin() {
-        UserDetails admin = userService.loadUserByUsername("admin");
+    void shouldEncodePasswordAndSaveUserOnRegister() {
+        AppUser user = new AppUser();
+        user.setUsername("john");
+        user.setPassword("secret");
+        user.setRole("ORGANISATEUR");
+        when(passwordEncoder.encode("secret")).thenReturn("ENC(secret)");
+        when(userRepository.save(user)).thenReturn(user);
 
-        assertThat(admin.getUsername()).isEqualTo("admin");
-        assertThat(admin.getPassword()).isEqualTo("ENC(password)");
-        assertThat(admin.getAuthorities()).anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-    }
+        userService.register(user);
 
-    @Test
-    void shouldRegisterAndRetrieveUser() {
-        userService.register("john", "secret", "USER");
-
-        UserDetails user = userService.loadUserByUsername("john");
-
-        assertThat(user.getUsername()).isEqualTo("john");
+        verify(passwordEncoder).encode("secret");
+        verify(userRepository).save(user);
         assertThat(user.getPassword()).isEqualTo("ENC(secret)");
-        assertThat(user.getAuthorities()).anyMatch(a -> a.getAuthority().equals("ROLE_USER"));
     }
 
     @Test
-    void shouldThrowWhenUserNotFound() {
-        assertThrows(UsernameNotFoundException.class, () -> userService.loadUserByUsername("unknown"));
+    void shouldReturnTrueWhenUsernameExists() {
+        when(userRepository.findByUsername("john")).thenReturn(Optional.of(new AppUser()));
+        assertThat(userService.existsByUsername("john")).isTrue();
+    }
+
+    @Test
+    void shouldReturnFalseWhenUsernameDoesNotExist() {
+        when(userRepository.findByUsername("john")).thenReturn(Optional.empty());
+        assertThat(userService.existsByUsername("john")).isFalse();
     }
 }
