@@ -10,9 +10,9 @@ import org.springframework.security.web.SecurityFilterChain;
 /**
  * Configuration de la sécurité pour le service Gateway.
  * <p>
- * Cette classe centralise la gestion de la sécurité pour l'ensemble des microservices
- * en imposant l'authentification via la gateway. Les utilisateurs sont chargés depuis la
- * base de données grâce à {@code CustomUserDetailsService} et les pages de connexion et
+ * Cette classe centralise la gestion de la sécurité pour l'ensemble des microservices␊
+ * en imposant l'authentification via la gateway. Les utilisateurs sont chargés depuis la␊
+ * base de données grâce à {@code CustomUserDetailsService} et les pages de connexion et␊
  * d'inscription sont fournies par la gateway.
  */
 @Configuration
@@ -21,8 +21,8 @@ public class SecurityConfig {
      * Définit la chaîne de filtres de sécurité HTTP.
      * <p>
      * Les pages de connexion et d'inscription sont accessibles sans authentification,
-     * tandis que les routes proxifiées vers les microservices exigent un rôle valide.
-     * Toutes les autres requêtes nécessitent également une authentification.
+     * tandis que les routes proxifiées vers les microservices et les autres pages
+     * nécessitent une authentification.
      * </p>
      *
      * @param http l'objet {@link HttpSecurity} configuré par Spring Security
@@ -32,11 +32,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/register").permitAll()
-                .requestMatchers("/patients/**", "/notes/**", "/assess/**").hasAnyRole("ORGANISATEUR", "PRATICIEN")
-                .anyRequest().authenticated()
-            )
+	        .authorizeHttpRequests(auth -> auth
+	            .requestMatchers("/css/**", "/js/**", "/images/**", "/login", "/register").permitAll()
+	            .requestMatchers("/patients/**", "/notes/**", "/assess/**").authenticated()
+	            .anyRequest().authenticated()
+	        )
             .formLogin(form -> form
                 .loginPage("/login")
                 .defaultSuccessUrl("/patients", true)

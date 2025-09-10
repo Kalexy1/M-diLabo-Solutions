@@ -48,8 +48,7 @@ public class AuthController {
 
     /**
      * Traite les informations soumises via le formulaire d'inscription.
-     * Vérifie l'unicité du nom d'utilisateur, valide les données,
-     * encode le mot de passe et enregistre l'utilisateur si toutes les conditions sont remplies.
+     * Valide les données, encode le mot de passe et enregistre l'utilisateur.
      *
      * @param user l'objet AppUser renseigné dans le formulaire
      * @param result le résultat de la validation des champs du formulaire
@@ -58,32 +57,18 @@ public class AuthController {
      */
     @PostMapping("/register")
     public String processRegister(@ModelAttribute("user") @Valid AppUser user,
-                                  BindingResult result,
-                                  Model model) {
-
-        if (result.hasErrors()) {
-            return "register";
-        }
-
-        try {
-            userService.existsByUsername(user.getUsername());
-            model.addAttribute("error", "Ce nom d'utilisateur existe déjà.");
-            return "register";
-        } catch (UsernameNotFoundException ex) {
-        }
-
-        try {
-            user.setRole(user.getRole());
-        } catch (IllegalArgumentException e) {
-            model.addAttribute("error", e.getMessage());
-            return "register";
-        }
-
-        String role = user.getRole();
-        if (role.startsWith("ROLE_")) {
-            role = role.substring(5);
-        }
-        userService.register(user);
-        return "redirect:/login";
-    }
+            BindingResult result,
+            Model model) {
+		if (result.hasErrors()) {
+		return "register";
+		}
+		
+		if (userService.existsByUsername(user.getUsername())) {
+		model.addAttribute("error", "Ce nom d'utilisateur existe déjà.");
+		return "register";
+		}
+		
+		userService.register(user);
+		return "redirect:/login";
+	}
 }

@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,9 +19,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.medilabo.gatewayservice.config.SecurityConfig;
 import com.medilabo.gatewayservice.model.AppUser;
@@ -43,7 +45,6 @@ class AuthControllerTest {
         newUser = new AppUser();
         newUser.setUsername("testuser");
         newUser.setPassword("password");
-        newUser.setRole("ORGANISATEUR");
     }
 
     @Test
@@ -61,29 +62,31 @@ class AuthControllerTest {
                 .andExpect(view().name("register"))
                 .andExpect(model().attributeExists("user"));
     }
-
+    
     @Test
     void shouldRegisterNewUserSuccessfully() throws Exception {
-        when(userService.existsByUsername("testuser")).thenThrow(new UsernameNotFoundException("not found"));
+        when(userService.existsByUsername("testuser")).thenReturn(false);
         when(userService.register(any(AppUser.class))).thenReturn(newUser);
 
         mockMvc.perform(post("/register")
                         .param("username", "testuser")
                         .param("password", "password")
-                        .param("role", "ORGANISATEUR")
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
     }
 
     @Test
-    void shouldFailRegistrationWhenRoleMissing() throws Exception {
+    void shouldFailRegistrationWhenUsernameExists() throws Exception {
+        when(userService.existsByUsername("testuser")).thenReturn(true);
+
         mockMvc.perform(post("/register")
                         .param("username", "testuser")
                         .param("password", "password")
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("register"))
-                .andExpect(model().attributeHasFieldErrors("user", "role"));
+                .andExpect(model().attributeExists("error"));
     }
+
 }

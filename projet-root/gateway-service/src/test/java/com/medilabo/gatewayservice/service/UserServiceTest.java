@@ -36,7 +36,6 @@ class UserServiceTest {
         AppUser user = new AppUser();
         user.setUsername("john");
         user.setPassword("secret");
-        user.setRole("ORGANISATEUR");
         when(passwordEncoder.encode("secret")).thenReturn("ENC(secret)");
         when(userRepository.save(user)).thenReturn(user);
 

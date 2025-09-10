@@ -15,14 +15,6 @@
             <label for="password">Mot de passe</label>
             <input type="password" id="password" th:field="*{password}" required />
         </div>
-        <div>
-            <label for="role">Rôle</label>
-            <select id="role" th:field="*{role}" required>
-				<option value="" disabled selected>Sélectionnez un rôle</option>
-                <option value="ORGANISATEUR">Organisateur</option>
-                <option value="PRATICIEN">Praticien</option>
-            </select>
-        </div>
         <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
         <div>
             <button type="submit">S'inscrire</button>

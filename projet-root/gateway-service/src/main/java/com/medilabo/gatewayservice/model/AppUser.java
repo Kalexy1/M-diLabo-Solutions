@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * Représente un utilisateur de l'application (organisateur ou praticien).
- * Utilisé pour l'authentification et l'autorisation via Spring Security.
+ * Représente un utilisateur de l'application.
+ * Utilisé pour l'authentification via Spring Security.
  */
 @Entity
 @Table(name = "users")
@@ -24,11 +24,6 @@ public class AppUser {
     @NotBlank(message = "Le mot de passe est requis")
     @Column(nullable = false)
     private String password;
-
-    /** Rôle de l'utilisateur (ROLE_ORGANISATEUR ou ROLE_PRATICIEN) */
-    @NotBlank(message = "Le rôle est requis")
-    @Column(nullable = false)
-    private String role;
 
     /**
      * Renvoie l'identifiant de l'utilisateur.
@@ -78,34 +73,4 @@ public class AppUser {
         this.password = password;
     }
 
-    /**
-     * Renvoie le rôle de l'utilisateur.
-     * @return le rôle sous forme ROLE_*
-     */
-    public String getRole() {
-        return role;
-    }
-
-    /**
-     * Définit le rôle de l'utilisateur.
-     * Le rôle doit être "ORGANISATEUR" ou "PRATICIEN" (avec ou sans le préfixe "ROLE_").
-     * @param role le rôle à définir
-     * @throws IllegalArgumentException si le rôle est invalide
-     */
-    public void setRole(String role) {
-        if (role == null || role.isBlank()) {
-            throw new IllegalArgumentException("Le rôle est requis.");
-        }
-
-        String formattedRole = role.toUpperCase();
-        if (!formattedRole.startsWith("ROLE_")) {
-            formattedRole = "ROLE_" + formattedRole;
-        }
-
-        if (!formattedRole.equals("ROLE_ORGANISATEUR") && !formattedRole.equals("ROLE_PRATICIEN")) {
-            throw new IllegalArgumentException("Rôle invalide : " + role + ". Le rôle doit être ORGANISATEUR ou PRATICIEN.");
-        }
-
-        this.role = formattedRole;
-    }
 }
