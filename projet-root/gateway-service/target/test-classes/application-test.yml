@@ -1,6 +1,0 @@
-spring:
-  cloud:
-    gateway:
-      enabled: false
-server:
-  port: 0

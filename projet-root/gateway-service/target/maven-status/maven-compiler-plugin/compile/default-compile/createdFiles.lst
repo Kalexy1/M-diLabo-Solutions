@@ -1,3 +1,0 @@
-com\medilabo\gatewayservice\config\SecurityConfig.class
-com\medilabo\gatewayservice\security\CookieToAuthHeaderFilter.class
-com\medilabo\gatewayservice\GatewayServiceApplication.class
