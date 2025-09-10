@@ -1,6 +1,0 @@
-JWT_SECRET: test-secret
-
-spring:
-  main:
-    allow-bean-definition-overriding: true
-
