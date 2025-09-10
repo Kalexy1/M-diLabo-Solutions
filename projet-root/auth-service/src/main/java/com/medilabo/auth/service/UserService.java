@@ -53,4 +53,16 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
+
+    /**
+     * Valide les identifiants d'un utilisateur.
+     *
+     * @param username     nom d'utilisateur.
+     * @param rawPassword  mot de passe fourni.
+     * @return true si les identifiants sont corrects, false sinon.
+     */
+    public boolean validateCredentials(String username, String rawPassword) {
+        AppUser user = userRepository.findByUsername(username);
+        return user != null && passwordEncoder.matches(rawPassword, user.getPassword());
+    }
 }

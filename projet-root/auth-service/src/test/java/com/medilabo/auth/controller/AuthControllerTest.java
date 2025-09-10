@@ -48,6 +48,30 @@ class AuthControllerTest {
     }
 
     @Test
+    void shouldLoginUserAndRedirect() throws Exception {
+        when(userService.validateCredentials("john", "pass")).thenReturn(true);
+
+        mockMvc.perform(post("/auth/login")
+                        .param("username", "john")
+                        .param("password", "pass")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/patients"));
+    }
+
+    @Test
+    void shouldRejectInvalidCredentials() throws Exception {
+        when(userService.validateCredentials("john", "wrong")).thenReturn(false);
+
+        mockMvc.perform(post("/auth/login")
+                        .param("username", "john")
+                        .param("password", "wrong")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/auth/login?error"));
+    }
+
+    @Test
     void shouldRegisterUserAndRedirect() throws Exception {
         when(userService.userExists("john")).thenReturn(false);
         when(userService.saveUser(Mockito.any(AppUser.class)))

@@ -44,6 +44,22 @@ public class AuthController {
     }
 
     /**
+     * loginUser: Traite la connexion d'un utilisateur.
+     *
+     * @param username nom d'utilisateur.
+     * @param password mot de passe.
+     * @return redirection vers les patients ou vers la page de connexion en cas d'erreur.
+     */
+    @PostMapping("/login")
+    public String loginUser(@RequestParam String username,
+                            @RequestParam String password) {
+        if (!userService.validateCredentials(username, password)) {
+            return "redirect:/auth/login?error";
+        }
+        return "redirect:/patients";
+    }
+    
+    /**
      * showRegistrationForm: Affiche le formulaire d'inscription.
      *
      * @param model modèle pour la vue.
