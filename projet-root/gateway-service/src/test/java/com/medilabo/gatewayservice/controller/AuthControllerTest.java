@@ -17,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -63,7 +64,7 @@ class AuthControllerTest {
 
     @Test
     void shouldRegisterNewUserSuccessfully() throws Exception {
-        when(userService.existsByUsername("testuser")).thenReturn(false);
+        when(userService.existsByUsername("testuser")).thenThrow(new UsernameNotFoundException("not found"));
         when(userService.register(any(AppUser.class))).thenReturn(newUser);
 
         mockMvc.perform(post("/register")
