@@ -21,9 +21,9 @@ public class PatientService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     /**
-     * URL de base du microservice patient-service.
+     * URL de base exposée par le gateway pour le microservice patient-service.
      */
-    private static final String PATIENT_SERVICE_URL = "http://patient-service:8081/patients";
+    private static final String PATIENT_SERVICE_URL = "http://gateway-service:8080/patients";
 
     /**
      * Récupère la liste de tous les patients depuis le microservice patient-service.

@@ -26,13 +26,13 @@ class NoteServiceTest {
         noteService = new NoteService() {
             @Override
             public List<Map<String, Object>> getNotesByPatientId(Long patientId) {
-                return restTemplate.getForObject("http://note-service:8083/notes/patient/" + patientId, List.class);
+                return restTemplate.getForObject("http://gateway-service:8080/notes/patient/" + patientId, List.class);
             }
 
             @Override
             public void ajouterNote(Long patientId, String contenu) {
                 Map<String, Object> note = Map.of("patientId", patientId, "contenu", contenu);
-                restTemplate.postForObject("http://note-service:8083/notes", note, Void.class);
+                restTemplate.postForObject("http://gateway-service:8080/notes", note, Void.class);
             }
         };
         mockServer = MockRestServiceServer.createServer(restTemplate);
@@ -47,7 +47,7 @@ class NoteServiceTest {
             ]
         """;
 
-        mockServer.expect(requestTo("http://note-service:8083/notes/patient/1"))
+        mockServer.expect(requestTo("http://gateway-service:8080/notes/patient/1"))
                 .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
 
         List<Map<String, Object>> notes = noteService.getNotesByPatientId(1L);
@@ -60,7 +60,7 @@ class NoteServiceTest {
 
     @Test
     void ajouterNote_shouldPostNoteToService() {
-        mockServer.expect(requestTo("http://note-service:8083/notes"))
+        mockServer.expect(requestTo("http://gateway-service:8080/notes"))
                 .andExpect(method(org.springframework.http.HttpMethod.POST))
                 .andExpect(jsonPath("$.patientId").value(1))
                 .andExpect(jsonPath("$.contenu").value("test note"))

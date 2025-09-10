@@ -64,9 +64,9 @@ public class PatientController {
 
             try {
                 RiskAssessmentResponse risk = restTemplate.getForObject(
-                    "http://risk-assessment-service:8084/assess/" + p.getId(),
-                    RiskAssessmentResponse.class
-                );
+                        "http://gateway-service:8080/assess/" + p.getId(),
+                        RiskAssessmentResponse.class
+                    );
                 riskByPatient.put(p.getId(), risk.getRiskLevel());
             } catch (Exception e) {
                 riskByPatient.put(p.getId(), "Non disponible");
@@ -177,9 +177,9 @@ public class PatientController {
             .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
 
         RiskAssessmentResponse risk = restTemplate.getForObject(
-            "http://risk-assessment-service:8084/assess/" + id,
-            RiskAssessmentResponse.class
-        );
+                "http://gateway-service:8080/assess/" + id,
+                RiskAssessmentResponse.class
+            );
 
         model.addAttribute("patient", patient);
         model.addAttribute("risk", risk);
@@ -212,9 +212,9 @@ public class PatientController {
             .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
 
         RiskAssessmentResponse risk = restTemplate.getForObject(
-            "http://risk-assessment-service:8084/assess/" + id,
-            RiskAssessmentResponse.class
-        );
+                "http://gateway-service:8080/assess/" + id,
+                RiskAssessmentResponse.class
+            );
 
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "attachment; filename=rapport_patient_" + id + ".pdf");

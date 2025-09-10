@@ -20,9 +20,9 @@ public class NoteService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     /**
-     * URL de base du microservice note-service.
+     * URL exposée par le gateway pour le microservice note-service.
      */
-    private final String NOTE_SERVICE_URL = "http://note-service:8083/notes";
+    private final String NOTE_SERVICE_URL = "http://gateway-service:8080/notes";
 
     /**
      * Récupère les notes d’un patient à partir du microservice note-service.
