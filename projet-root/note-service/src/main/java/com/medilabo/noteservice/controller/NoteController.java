@@ -1,7 +1,7 @@
 package com.medilabo.noteservice.controller;
 
 import com.medilabo.noteservice.model.Note;
-import com.medilabo.noteservice.repository.NoteRepository;
+import com.medilabo.noteservice.service.NoteService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,23 +15,24 @@ import java.util.List;
  * <p>
  * Toutes les routes sont accessibles sous le préfixe <code>/notes</code>.
  * </p>
- * 
- * @author [Ton Nom]
- * @version 1.0
  */
 @RestController
 @RequestMapping("/notes")
 public class NoteController {
-
-    private final NoteRepository repository;
-
     /**
      * Constructeur injectant le {@link NoteRepository}.
      *
      * @param repository le repository de gestion des notes
      */
-    public NoteController(NoteRepository repository) {
-        this.repository = repository;
+    private final NoteService noteService;
+
+    /**
+     * Constructeur injectant le {@link NoteService}.
+     *
+     * @param noteService service de gestion des notes
+     */
+    public NoteController(NoteService noteService) {
+        this.noteService = noteService;
     }
 
     /**
@@ -42,7 +43,7 @@ public class NoteController {
      */
     @GetMapping("/patient/{patientId}")
     public List<Note> getNotesByPatient(@PathVariable Integer patientId) {
-        return repository.findByPatientId(patientId);
+        return noteService.getNotesByPatient(patientId);
     }
 
     /**
@@ -53,6 +54,6 @@ public class NoteController {
      */
     @PostMapping
     public Note addNote(@RequestBody Note note) {
-        return repository.save(note);
+        return noteService.addNote(note);
     }
 }

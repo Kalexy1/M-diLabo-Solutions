@@ -2,7 +2,8 @@ package com.medilabo.noteservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.medilabo.noteservice.model.Note;
-import com.medilabo.noteservice.repository.NoteRepository;
+import com.medilabo.noteservice.service.NoteService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,7 @@ class NoteControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private NoteRepository repository;
+    private NoteService service;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -34,11 +35,11 @@ class NoteControllerTest {
 
     @BeforeEach
     void setup() {
-        repository.deleteAll(); // Nettoyage
+        service.deleteAll();
         Note newNote = new Note();
         newNote.setPatientId(42);
         newNote.setContenu("Microalbumine détectée");
-        note = repository.save(newNote); // On garde la version avec ID
+        note = service.addNote(newNote);
     }
 
     @Test
