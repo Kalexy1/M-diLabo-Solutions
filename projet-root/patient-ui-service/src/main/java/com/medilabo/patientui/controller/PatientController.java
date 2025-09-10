@@ -16,8 +16,8 @@ import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.medilabo.patientui.dto.RiskAssessmentResponse;
 import com.medilabo.patientui.model.Patient;
-import com.medilabo.patientui.repository.PatientRepository;
 import com.medilabo.patientui.service.NoteService;
+import com.medilabo.patientui.service.PatientService;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -29,19 +29,19 @@ import jakarta.servlet.http.HttpServletResponse;
 @Controller
 public class PatientController {
 
-    private final PatientRepository patientRepository;
+    private final PatientService patientService;
     private final NoteService noteService;
     private final RestTemplate restTemplate;
 
     /**
      * Constructeur avec injection des dépendances.
      *
-     * @param patientRepository le dépôt des patients
-     * @param noteService le service de gestion des notes
-     * @param restTemplate pour communiquer avec les microservices
+     * @param patientService le service de gestion des patients
+     * @param noteService le service de gestion des notes␊
+     * @param restTemplate pour communiquer avec les microservices␊
      */
-    public PatientController(PatientRepository patientRepository, NoteService noteService, RestTemplate restTemplate) {
-        this.patientRepository = patientRepository;
+    public PatientController(PatientService patientService, NoteService noteService, RestTemplate restTemplate) {
+        this.patientService = patientService;
         this.noteService = noteService;
         this.restTemplate = restTemplate;
     }
@@ -54,7 +54,7 @@ public class PatientController {
      */
     @GetMapping("/patients")
     public String getAllPatients(Model model) {
-        List<Patient> patients = patientRepository.findAll();
+    	List<Patient> patients = patientService.getAllPatients();
         Map<Long, List<Map<String, Object>>> notesByPatient = new HashMap<>();
         Map<Long, String> riskByPatient = new HashMap<>();
 
@@ -99,7 +99,7 @@ public class PatientController {
      */
     @PostMapping("/patients")
     public String createPatient(@ModelAttribute Patient patient) {
-        patientRepository.save(patient);
+    	patientService.createPatient(patient);
         return "redirect:/patients";
     }
 
@@ -126,7 +126,7 @@ public class PatientController {
      */
     @GetMapping("/patients/edit/{id}")
     public String showEditForm(@PathVariable Long id, Model model) {
-        Patient patient = patientRepository.findById(id)
+    	Patient patient = patientService.getPatientById(id)
             .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
         model.addAttribute("patient", patient);
         return "edit-patient";
@@ -140,7 +140,7 @@ public class PatientController {
      */
     @PostMapping("/patients/update")
     public String updatePatient(@ModelAttribute Patient patient) {
-        patientRepository.save(patient);
+    	patientService.updatePatient(patient.getId(), patient);
         return "redirect:/patients";
     }
 
@@ -153,7 +153,7 @@ public class PatientController {
      */
     @GetMapping("/patients/{id}/notes")
     public String showPatientNotes(@PathVariable Long id, Model model) {
-        Patient patient = patientRepository.findById(id)
+    	Patient patient = patientService.getPatientById(id)
             .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
 
         List<Map<String, Object>> notes = noteService.getNotesByPatientId(id);
@@ -173,7 +173,7 @@ public class PatientController {
      */
     @GetMapping("/patients/{id}/risk")
     public String showRiskReport(@PathVariable Long id, Model model) {
-        Patient patient = patientRepository.findById(id)
+    	Patient patient = patientService.getPatientById(id)
             .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
 
         RiskAssessmentResponse risk = restTemplate.getForObject(
@@ -194,7 +194,7 @@ public class PatientController {
      */
     @GetMapping("/patients/delete/{id}")
     public String deletePatient(@PathVariable Long id) {
-        patientRepository.deleteById(id);
+    	patientService.deletePatient(id);
         return "redirect:/patients";
     }
 
@@ -208,7 +208,7 @@ public class PatientController {
      */
     @GetMapping("/patients/{id}/report/pdf")
     public void downloadPdfReport(@PathVariable Long id, HttpServletResponse response) throws IOException, DocumentException {
-        Patient patient = patientRepository.findById(id)
+    	Patient patient = patientService.getPatientById(id)
             .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
 
         RiskAssessmentResponse risk = restTemplate.getForObject(

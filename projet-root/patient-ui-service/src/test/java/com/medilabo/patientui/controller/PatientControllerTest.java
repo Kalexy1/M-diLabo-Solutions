@@ -1,14 +1,15 @@
 package com.medilabo.patientui.controller;
 
 import com.medilabo.patientui.model.Patient;
-import com.medilabo.patientui.repository.PatientRepository;
 import com.medilabo.patientui.service.NoteService;
+import com.medilabo.patientui.service.PatientService;
 import com.medilabo.patientui.dto.RiskAssessmentResponse;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -27,14 +28,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(PatientController.class)
-@WithMockUser(username = "testuser", roles = {"ORGANISATEUR"})
+@AutoConfigureMockMvc(addFilters = false)
 class PatientControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private PatientRepository patientRepository;
+    private PatientService patientService;
 
     @MockBean
     private NoteService noteService;
@@ -61,7 +62,7 @@ class PatientControllerTest {
 
     @Test
     void shouldDisplayPatientList() throws Exception {
-        when(patientRepository.findAll()).thenReturn(List.of(patient));
+        when(patientService.getAllPatients()).thenReturn(List.of(patient));
         when(noteService.getNotesByPatientId(1L)).thenReturn(Collections.emptyList());
         when(restTemplate.getForObject(anyString(), eq(RiskAssessmentResponse.class))).thenReturn(risk);
 
@@ -82,18 +83,19 @@ class PatientControllerTest {
     @Test
     void shouldCreatePatient() throws Exception {
         mockMvc.perform(post("/patients")
-                        .param("nom", "Dupont")
-                        .param("prenom", "Jean")
-                        .param("dateNaissance", "1980-01-01")
-                        .param("genre", "M")
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/patients"));
-    }
+		                .param("nom", "Dupont")
+		                .param("prenom", "Jean")
+		                .param("dateNaissance", "1980-01-01")
+		                .param("genre", "M"))
+		        .andExpect(status().is3xxRedirection())
+		        .andExpect(redirectedUrl("/patients"));
+
+        verify(patientService).createPatient(ArgumentMatchers.any(Patient.class));
+	}
 
     @Test
     void shouldShowEditForm() throws Exception {
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+    	when(patientService.getPatientById(1L)).thenReturn(Optional.of(patient));
 
         mockMvc.perform(get("/patients/edit/1"))
                 .andExpect(status().isOk())
@@ -104,19 +106,20 @@ class PatientControllerTest {
     @Test
     void shouldUpdatePatient() throws Exception {
         mockMvc.perform(post("/patients/update")
-                        .param("id", "1")
-                        .param("nom", "Dupont")
-                        .param("prenom", "Jean")
-                        .param("dateNaissance", "1980-01-01")
-                        .param("genre", "M")
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/patients"));
-    }
+		                .param("id", "1")
+		                .param("nom", "Dupont")
+		                .param("prenom", "Jean")
+		                .param("dateNaissance", "1980-01-01")
+		                .param("genre", "M"))
+		        .andExpect(status().is3xxRedirection())
+		        .andExpect(redirectedUrl("/patients"));
+
+        verify(patientService).updatePatient(eq(1L), ArgumentMatchers.any(Patient.class));
+	}
 
     @Test
     void shouldShowPatientNotes() throws Exception {
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+    	when(patientService.getPatientById(1L)).thenReturn(Optional.of(patient));
         when(noteService.getNotesByPatientId(1L)).thenReturn(List.of(Map.of("contenu", "note")));
 
         mockMvc.perform(get("/patients/1/notes"))
@@ -127,7 +130,7 @@ class PatientControllerTest {
 
     @Test
     void shouldShowRiskReport() throws Exception {
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+    	when(patientService.getPatientById(1L)).thenReturn(Optional.of(patient));
         when(restTemplate.getForObject(anyString(), eq(RiskAssessmentResponse.class))).thenReturn(risk);
 
         mockMvc.perform(get("/patients/1/risk"))
@@ -139,32 +142,31 @@ class PatientControllerTest {
     @Test
     void shouldDeletePatient() throws Exception {
         mockMvc.perform(get("/patients/delete/1"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/patients"));
+		        .andExpect(status().is3xxRedirection())
+		        .andExpect(redirectedUrl("/patients"));
 
-        verify(patientRepository).deleteById(1L);
+        verify(patientService).deletePatient(1L);
     }
 
     @Test
     void shouldAddNote() throws Exception {
         mockMvc.perform(post("/notes")
-                        .param("patientId", "1")
-                        .param("contenu", "note test")
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/patients"));
+		                .param("patientId", "1")
+		                .param("contenu", "note test"))
+		        .andExpect(status().is3xxRedirection())
+		        .andExpect(redirectedUrl("/patients"));
 
         verify(noteService).ajouterNote(1L, "note test");
     }
 
     @Test
     void shouldGeneratePdfReport() throws Exception {
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+    	when(patientService.getPatientById(1L)).thenReturn(Optional.of(patient));
         when(restTemplate.getForObject(anyString(), eq(RiskAssessmentResponse.class))).thenReturn(risk);
 
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        PatientController controller = new PatientController(patientRepository, noteService, restTemplate);
+        PatientController controller = new PatientController(patientService, noteService, restTemplate);
         controller.downloadPdfReport(1L, response);
 
         assertThat(response.getStatus()).isEqualTo(200);
