@@ -84,13 +84,13 @@ class PatientControllerTest {
 
     @Test
     void shouldCreatePatient() throws Exception {
-        mockMvc.perform(post("/patients")
-		                .param("nom", "Dupont")
-		                .param("prenom", "Jean")
-		                .param("dateNaissance", "1980-01-01")
-		                .param("genre", "M"))
-		        .andExpect(status().is3xxRedirection())
-		        .andExpect(redirectedUrl("/patients"));
+        mockMvc.perform(post("/patients").with(csrf())
+                                .param("nom", "Dupont")
+                                .param("prenom", "Jean")
+                                .param("dateNaissance", "1980-01-01")
+                                .param("genre", "M"))
+                        .andExpect(status().is3xxRedirection())
+                        .andExpect(redirectedUrl("/patients"));
 
         verify(patientService).createPatient(ArgumentMatchers.any(Patient.class));
 	}
@@ -107,14 +107,14 @@ class PatientControllerTest {
 
     @Test
     void shouldUpdatePatient() throws Exception {
-        mockMvc.perform(post("/patients/update")
-		                .param("id", "1")
-		                .param("nom", "Dupont")
-		                .param("prenom", "Jean")
-		                .param("dateNaissance", "1980-01-01")
-		                .param("genre", "M"))
-		        .andExpect(status().is3xxRedirection())
-		        .andExpect(redirectedUrl("/patients"));
+        mockMvc.perform(post("/patients/update").with(csrf())
+                                .param("id", "1")
+                                .param("nom", "Dupont")
+                                .param("prenom", "Jean")
+                                .param("dateNaissance", "1980-01-01")
+                                .param("genre", "M"))
+                        .andExpect(status().is3xxRedirection())
+                        .andExpect(redirectedUrl("/patients"));
 
         verify(patientService).updatePatient(eq(1L), ArgumentMatchers.any(Patient.class));
 	}
@@ -152,11 +152,11 @@ class PatientControllerTest {
 
     @Test
     void shouldAddNote() throws Exception {
-        mockMvc.perform(post("/notes")
-		                .param("patientId", "1")
-		                .param("contenu", "note test"))
-		        .andExpect(status().is3xxRedirection())
-		        .andExpect(redirectedUrl("/patients"));
+        mockMvc.perform(post("/notes").with(csrf())
+                                .param("patientId", "1")
+                                .param("contenu", "note test"))
+                        .andExpect(status().is3xxRedirection())
+                        .andExpect(redirectedUrl("/patients"));
 
         verify(noteService).ajouterNote(1L, "note test");
     }
