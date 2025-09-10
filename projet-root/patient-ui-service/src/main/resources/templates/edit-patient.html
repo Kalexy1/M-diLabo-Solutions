@@ -1,0 +1,49 @@
+<!DOCTYPE html> 
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifier un patient</title>
+</head>
+<body>
+    <h1>Modifier un patient</h1>
+
+    <form th:action="@{/patients/update}" th:object="${patient}" method="post">
+        <!-- Champ caché pour l'ID -->
+        <input type="hidden" th:field="*{id}" />
+
+        <div>
+            <label for="prenom">Prénom :</label>
+            <input type="text" id="prenom" th:field="*{prenom}" required pattern="^[A-Za-zÀ-ÿ \-']{2,}$" title="Le prénom doit contenir au moins 2 lettres." />
+        </div>
+        <div>
+            <label for="nom">Nom :</label>
+            <input type="text" id="nom" th:field="*{nom}" required pattern="^[A-Za-zÀ-ÿ \-']{2,}$" title="Le nom doit contenir au moins 2 lettres." />
+        </div>
+        <div>
+            <label for="dateNaissance">Date de naissance :</label>
+            <input type="date" id="dateNaissance" th:field="*{dateNaissance}" required />
+        </div>
+        <div>
+            <label for="genre">Genre :</label>
+            <select id="genre" th:field="*{genre}" required>
+                <option value="" disabled selected>-- Sélectionner --</option>
+                <option value="M">Homme</option>
+                <option value="F">Femme</option>
+            </select>
+        </div>
+        <div>
+            <label for="adresse">Adresse :</label>
+            <input type="text" id="adresse" th:field="*{adresse}" maxlength="255" required />
+        </div>
+        <div>
+            <label for="telephone">Téléphone :</label>
+            <input type="tel" id="telephone" th:field="*{telephone}" required />
+        </div>
+        <div>
+            <button type="submit">Enregistrer les modifications</button>
+        </div>
+    </form>
+
+    <p><a th:href="@{/patients}">← Retour à la liste</a></p>
+</body>
+</html>
