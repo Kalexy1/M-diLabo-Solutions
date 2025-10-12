@@ -53,6 +53,15 @@ spring:
             - SetPath=/auth/login
             - RemoveRequestHeader=Authorization
 
+        - id: register-to-auth
+          uri: http://localhost:8085
+          predicates:
+            - Path=/register
+          filters:
+            - SetPath=/auth/register
+            - RemoveRequestHeader=Authorization
+
+
         # =======================
         # APIs
         # =======================
@@ -93,3 +102,4 @@ logging:
     reactor.netty.http.client: WARN
 
 JWT_SECRET: 0123456789abcdefghijklmnopqrstuvwxyz012345
+
