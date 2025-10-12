@@ -1,5 +1,6 @@
 server:
   port: ${SERVER_PORT:8081}
+
 spring:
   application:
     name: patient-service
@@ -13,8 +14,12 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+
+# même secret dans tout l’écosystème
+JWT_SECRET: ${JWT_SECRET}

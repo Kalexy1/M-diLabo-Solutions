@@ -1,120 +1,57 @@
 package com.medilabo.patientservice.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
 import java.time.LocalDate;
 
-/**
- * Application: com.medilabo.patientservice.model
- * <p>
- * Classe <strong>Patient</strong>.
- * <br/>
- * Rôle : Entité JPA représentant un patient dans le système.
- * </p>
- * <p>
- * Cette entité est persistée en base de données via JPA/Hibernate.
- * </p>
- */
 @Entity
+@Table(name = "patients")
 public class Patient {
 
-    /** Identifiant unique du patient, généré automatiquement. */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL AUTO_INCREMENT
     private Long id;
 
-    /** Prénom du patient. */
-    private String prenom;
+    @NotBlank
+    @Column(nullable = false)
+    private String firstName;
 
-    /** Nom de famille du patient. */
-    private String nom;
+    @NotBlank
+    @Column(nullable = false)
+    private String lastName;
 
-    /** Date de naissance du patient. */
-    private LocalDate dateNaissance;
+    @NotNull @Past
+    @Column(nullable = false)
+    private LocalDate birthDate;
 
-    /** Genre du patient (par ex. "M" ou "F"). */
-    private String genre;
+    @NotBlank
+    @Column(nullable = false)
+    private String gender; // "M" / "F" / autre — ou remplace par un enum si tu veux
 
-    /** Adresse postale du patient. */
-    private String adresse;
+    private String address;
+    private String phone;
 
-    /** Numéro de téléphone du patient. */
-    private String telephone;
-
-    /** Constructeur sans argument requis par JPA. */
-    public Patient() {}
-
-    /**
-     * Constructeur complet.
-     *
-     * @param id identifiant du patient
-     * @param prenom prénom du patient
-     * @param nom nom du patient
-     * @param dateNaissance date de naissance
-     * @param genre genre
-     * @param adresse adresse postale
-     * @param telephone numéro de téléphone
-     */
-    public Patient(Long id, String prenom, String nom, LocalDate dateNaissance, String genre, String adresse, String telephone) {
-        this.id = id;
-        this.prenom = prenom;
-        this.nom = nom;
-        this.dateNaissance = dateNaissance;
-        this.genre = genre;
-        this.adresse = adresse;
-        this.telephone = telephone;
-    }
-
-    /**
-     * Constructeur sans identifiant (pour création).
-     *
-     * @param prenom prénom du patient
-     * @param nom nom du patient
-     * @param dateNaissance date de naissance
-     * @param genre genre
-     * @param adresse adresse postale
-     * @param telephone numéro de téléphone
-     */
-    public Patient(String prenom, String nom, LocalDate dateNaissance, String genre, String adresse, String telephone) {
-        this.prenom = prenom;
-        this.nom = nom;
-        this.dateNaissance = dateNaissance;
-        this.genre = genre;
-        this.adresse = adresse;
-        this.telephone = telephone;
-    }
-
-    /** @return identifiant du patient */
+    // --- getters/setters ---
     public Long getId() { return id; }
-    /** @param id identifiant du patient */
     public void setId(Long id) { this.id = id; }
 
-    /** @return prénom du patient */
-    public String getPrenom() { return prenom; }
-    /** @param prenom prénom du patient */
-    public void setPrenom(String prenom) { this.prenom = prenom; }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
 
-    /** @return nom du patient */
-    public String getNom() { return nom; }
-    /** @param nom nom du patient */
-    public void setNom(String nom) { this.nom = nom; }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
 
-    /** @return date de naissance du patient */
-    public LocalDate getDateNaissance() { return dateNaissance; }
-    /** @param dateNaissance date de naissance du patient */
-    public void setDateNaissance(LocalDate dateNaissance) { this.dateNaissance = dateNaissance; }
+    public LocalDate getBirthDate() { return birthDate; }
+    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
 
-    /** @return genre du patient */
-    public String getGenre() { return genre; }
-    /** @param genre genre du patient */
-    public void setGenre(String genre) { this.genre = genre; }
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
 
-    /** @return adresse du patient */
-    public String getAdresse() { return adresse; }
-    /** @param adresse adresse du patient */
-    public void setAdresse(String adresse) { this.adresse = adresse; }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
 
-    /** @return numéro de téléphone du patient */
-    public String getTelephone() { return telephone; }
-    /** @param telephone numéro de téléphone du patient */
-    public void setTelephone(String telephone) { this.telephone = telephone; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 }
