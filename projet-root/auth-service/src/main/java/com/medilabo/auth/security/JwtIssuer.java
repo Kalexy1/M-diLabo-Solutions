@@ -1,89 +1,108 @@
 package com.medilabo.auth.security;
 
+import com.medilabo.auth.model.AppUser;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * Composant responsable de l'émission de jetons JWT signés (HS256).
- *
- * <p>
- * Cette classe est utilisée dans le {@code auth-service} afin de générer un
- * token d’authentification pour un utilisateur authentifié. Le JWT contient
- * les informations suivantes :
- * </p>
- * <ul>
- *   <li>Le sujet (nom d’utilisateur) ;</li>
- *   <li>Les rôles (authorities Spring Security) ;</li>
- *   <li>La date d’émission ({@code iat}) ;</li>
- *   <li>La date d’expiration ({@code exp}), fixée par défaut à +1h.</li>
- * </ul>
- *
- * <p>
- * Le secret utilisé pour signer le JWT est injecté via la propriété
- * d’environnement {@code JWT_SECRET}.
- * </p>
- */
 @Component
 public class JwtIssuer {
 
-    /**
-     * Clé secrète utilisée pour signer les jetons JWT (algorithme HS256).
-     */
     private final byte[] secret;
+    private final long ttlSeconds;
+    private final String issuer;
+    private final List<String> audience;
+    private final boolean includeJti;
+    private final boolean includeNbf;
+    private final JWSSigner signer;
 
-    /**
-     * Constructeur.
-     *
-     * @param secret valeur de la propriété {@code JWT_SECRET}, injectée
-     *               depuis les variables d’environnement ou les fichiers
-     *               de configuration Spring.
-     */
-    public JwtIssuer(@Value("${JWT_SECRET}") String secret) {
-        this.secret = secret.getBytes();
+    public JwtIssuer(
+            @Value("${JWT_SECRET}") String secret,
+            @Value("${JWT_TTL_SECONDS:7200}") long ttlSeconds,
+            @Value("${JWT_ISSUER:medilabo-auth}") String issuer,
+            @Value("${JWT_AUDIENCE:gateway,patient,note,risk}") String audienceCsv,
+            @Value("${JWT_INCLUDE_JTI:true}") boolean includeJti,
+            @Value("${JWT_INCLUDE_NBF:true}") boolean includeNbf
+    ) {
+        byte[] key = secret.getBytes(StandardCharsets.UTF_8);
+        if (key.length < 32) throw new IllegalArgumentException("JWT_SECRET must be >= 32 bytes.");
+        this.secret = key;
+        this.ttlSeconds = ttlSeconds;
+        this.issuer = issuer;
+        this.audience = parseAudience(audienceCsv);
+        this.includeJti = includeJti;
+        this.includeNbf = includeNbf;
+        try {
+            this.signer = new MACSigner(this.secret);
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot init signer", e);
+        }
     }
 
-    /**
-     * Génère et signe un jeton JWT pour un utilisateur.
-     *
-     * @param username     le nom de l’utilisateur (sera stocké dans {@code sub})
-     * @param authorities  la liste des rôles/authorities de l’utilisateur
-     * @return une chaîne représentant le JWT signé
-     * @throws RuntimeException si une erreur survient lors de la signature
-     */
+    /** Émission depuis authorities Spring (ROLE_X -> X dans claim 'roles'). */
     public String issue(String username, List<? extends GrantedAuthority> authorities) {
+        String subject = normalize(username);
+        List<String> roles = authorities == null ? List.of() :
+                authorities.stream()
+                        .map(GrantedAuthority::getAuthority)      // "ROLE_X"
+                        .map(a -> a.startsWith("ROLE_") ? a.substring(5) : a)
+                        .collect(Collectors.toList());
+        return internalIssue(subject, roles);
+    }
+
+    /** Émission pratique depuis un AppUser. */
+    public String issue(AppUser user) {
+        return internalIssue(normalize(user.getUsername()), List.of(user.getRole().name()));
+    }
+
+    // Impl
+    private String internalIssue(String subjectLower, List<String> roles) {
         try {
             Instant now = Instant.now();
-            Instant exp = now.plusSeconds(3600); // +1 heure
+            Instant exp = now.plusSeconds(ttlSeconds);
 
-            List<String> roles = authorities.stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .toList();
-
-            JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    .subject(username)
+            JWTClaimsSet.Builder b = new JWTClaimsSet.Builder()
+                    .issuer(issuer)
+                    .subject(subjectLower)
                     .issueTime(Date.from(now))
                     .expirationTime(Date.from(exp))
-                    .claim("roles", roles)
-                    .build();
+                    .claim("roles", roles);
 
-            SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-            JWSSigner signer = new MACSigner(secret);
+            if (!audience.isEmpty()) b.audience(audience);
+            if (includeNbf) b.notBeforeTime(Date.from(now));
+            if (includeJti) b.jwtID(UUID.randomUUID().toString());
+
+            SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), b.build());
             jwt.sign(signer);
-
             return jwt.serialize();
         } catch (Exception e) {
             throw new RuntimeException("Cannot issue JWT", e);
         }
+    }
+
+    private static List<String> parseAudience(String csv) {
+        if (csv == null || csv.isBlank()) return List.of();
+        String[] parts = csv.split(",");
+        List<String> out = new ArrayList<>();
+        for (String p : parts) {
+            String s = p.trim();
+            if (!s.isEmpty()) out.add(s);
+        }
+        return Collections.unmodifiableList(out);
+    }
+
+    private static String normalize(String username) {
+        return username == null ? null : username.trim().toLowerCase();
     }
 }

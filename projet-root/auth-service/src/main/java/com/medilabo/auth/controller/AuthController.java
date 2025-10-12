@@ -1,105 +1,162 @@
 package com.medilabo.auth.controller;
 
 import com.medilabo.auth.model.AppUser;
+import com.medilabo.auth.model.UserRole;
+import com.medilabo.auth.security.JwtIssuer;
 import com.medilabo.auth.service.UserService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * Application: com.medilabo.auth.controller
- * <p>
- * Classe <strong>AuthController</strong>.
- * <br/>
- * Rôle: Gère les opérations d'authentification et d'inscription des utilisateurs.
- * </p>
- */
+import java.time.Duration;
+import java.util.List;
+import java.util.Optional;
+
 @Controller
 @RequestMapping("/auth")
 public class AuthController {
 
     private final UserService userService;
+    private final JwtIssuer jwtIssuer;
 
-    /**
-     * Constructeur AuthController.
-     *
-     * @param userService service de gestion des utilisateurs.
-     */
-    @Autowired
-    public AuthController(UserService userService) {
+    @Value("${security.jwt.cookie.name:JWT_TOKEN}")
+    private String jwtCookieName;
+
+    @Value("${security.jwt.cookie.secure:false}")
+    private boolean jwtCookieSecure;
+
+    @Value("${security.jwt.cookie.samesite:Lax}")
+    private String jwtCookieSameSite;
+
+    @Value("${security.jwt.ttl-seconds:43200}") // 12h
+    private long ttlSeconds;
+
+    public AuthController(UserService userService, JwtIssuer jwtIssuer) {
         this.userService = userService;
+        this.jwtIssuer = jwtIssuer;
     }
 
-    /**
-     * showLoginForm: Affiche le formulaire de connexion.
-     *
-     * @return nom de la vue login.
-     */
+    // ---------- LOGIN ----------
     @GetMapping("/login")
-    public String showLoginForm() {
-        return "login";
+    public String showLoginForm(@RequestParam(value = "error", required = false) String error, Model model) {
+        if (error != null) model.addAttribute("error", "Identifiants invalides");
+        return "login"; // templates/login.html
     }
 
-    /**
-     * loginUser: Traite la connexion d'un utilisateur.
-     *
-     * @param username nom d'utilisateur.
-     * @param password mot de passe.
-     * @return redirection vers les patients ou vers la page de connexion en cas d'erreur.
-     */
     @PostMapping("/login")
-    public String loginUser(@RequestParam String username,
-                            @RequestParam String password) {
-        if (!userService.validateCredentials(username, password)) {
+    public String login(@RequestParam String username,
+                        @RequestParam String password,
+                        @RequestParam(value = "redirect", required = false) String redirect,
+                        HttpServletResponse response) {
+
+        String u = (username == null) ? null : username.trim();
+        if (!userService.validateCredentials(u, password)) {
             return "redirect:/auth/login?error";
         }
-        return "redirect:/patients";
+
+        Optional<AppUser> opt = userService.findByUsername(u);
+        if (opt.isEmpty()) {
+            return "redirect:/auth/login?error";
+        }
+        AppUser user = opt.get();
+
+        List<GrantedAuthority> authorities = List.of(
+            new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
+        );
+
+        String token = jwtIssuer.issue(user.getUsername(), authorities);
+        addJwtCookie(response, token);
+
+        // Redirection RELATIVE (pas d’URL absolue)
+        String target = normalizeRedirect(redirect, "/ui/patients");
+        return "redirect:" + target;
     }
-    
-    /**
-     * showRegistrationForm: Affiche le formulaire d'inscription.
-     *
-     * @param model modèle pour la vue.
-     * @return nom de la vue register.
-     */
+
+    // ---------- REGISTER ----------
     @GetMapping("/register")
-    public String showRegistrationForm(Model model) {
+    public String showRegisterForm(Model model) {
         model.addAttribute("user", new AppUser());
-        return "register";
+        model.addAttribute("roles", UserRole.values());
+        return "register"; // templates/register.html
     }
 
-    /**
-     * registerUser: Traite l'inscription d'un nouvel utilisateur.
-     *
-     * @param user   utilisateur à enregistrer.
-     * @param result résultats de validation.
-     * @param model  modèle pour la vue.
-     * @return redirection ou vue en cas d'erreur.
-     */
     @PostMapping("/register")
-    public String registerUser(@Valid @ModelAttribute("user") AppUser user,
-                               BindingResult result,
-                               Model model) {
+    public String register(@Valid @ModelAttribute("user") AppUser formUser,
+                           BindingResult bindingResult,
+                           @RequestParam(value = "redirect", required = false) String redirect,
+                           HttpServletResponse response) {
 
-        if (result.hasErrors()) {
+        if (bindingResult.hasErrors()) {
             return "register";
         }
 
-        if (userService.userExists(user.getUsername())) {
-            model.addAttribute("error", "Nom d'utilisateur déjà pris");
-            return "register";
+        if (formUser.getRole() == null) {
+            formUser.setRole(UserRole.ORGANISATEUR);
         }
 
-        String role = user.getRole().toUpperCase();
-        if (!role.startsWith("ROLE_")) {
-            role = "ROLE_" + role;
-        }
-        user.setRole(role);
+        try {
+            AppUser created = userService.register(formUser);
 
-        userService.saveUser(user);
-        return "redirect:/auth/login";
+            List<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_" + created.getRole().name())
+            );
+            String token = jwtIssuer.issue(created.getUsername(), authorities);
+            addJwtCookie(response, token);
+
+            String target = normalizeRedirect(redirect, "/ui/patients");
+            return "redirect:" + target;
+
+        } catch (IllegalArgumentException ex) {
+            return "redirect:/auth/register?error=exists";
+        }
+    }
+
+    // ---------- LOGOUT ----------
+    @PostMapping("/logout")
+    public String logout(HttpServletResponse response,
+                         @RequestParam(value = "redirect", required = false) String redirect) {
+        clearJwtCookie(response);
+        // Redirection RELATIVE
+        String target = normalizeRedirect(redirect, "/auth/login?logout");
+        return "redirect:" + target;
+    }
+
+    // ---------- Helpers ----------
+    private void addJwtCookie(HttpServletResponse response, String token) {
+        ResponseCookie cookie = ResponseCookie.from(jwtCookieName, token)
+            .httpOnly(true)
+            .secure(jwtCookieSecure)
+            .sameSite(jwtCookieSameSite)
+            .path("/")
+            .maxAge(Duration.ofSeconds(ttlSeconds))
+            .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearJwtCookie(HttpServletResponse response) {
+        ResponseCookie delete = ResponseCookie.from(jwtCookieName, "")
+            .httpOnly(true)
+            .secure(jwtCookieSecure)
+            .sameSite(jwtCookieSameSite)
+            .path("/")
+            .maxAge(Duration.ZERO)
+            .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, delete.toString());
+    }
+
+    /** N’autorise que des redirections RELATIVES commençant par “/”. */
+    private String normalizeRedirect(String redirect, String defaultPath) {
+        if (redirect != null && !redirect.isBlank() && redirect.startsWith("/")) {
+            return redirect;
+        }
+        return defaultPath.startsWith("/") ? defaultPath : ("/" + defaultPath);
     }
 }

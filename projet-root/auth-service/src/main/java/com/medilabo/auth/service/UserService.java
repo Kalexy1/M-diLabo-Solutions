@@ -2,67 +2,46 @@ package com.medilabo.auth.service;
 
 import com.medilabo.auth.model.AppUser;
 import com.medilabo.auth.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-/**
- * Application: com.medilabo.auth.service
- * <p>
- * Classe <strong>UserService</strong>.
- * <br/>
- * Rôle: Gère la logique métier liée aux utilisateurs.
- * </p>
- */
+import java.util.Optional;
+
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Constructeur.
-     *
-     * @param userRepository référentiel utilisateur.
-     * @param passwordEncoder encodeur de mot de passe.
-     */
-    @Autowired
-    public UserService(UserRepository userRepository,
-                       PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
-    /**
-     * Vérifie si un utilisateur existe.
-     *
-     * @param username nom d'utilisateur.
-     * @return true si l'utilisateur existe, false sinon.
-     */
-    public boolean userExists(String username) {
-        return userRepository.findByUsername(username) != null;
+    private String normalize(String username) {
+        return username == null ? null : username.trim().toLowerCase();
     }
 
-    /**
-     * Sauvegarde un nouvel utilisateur avec un mot de passe encodé.
-     *
-     * @param user utilisateur à sauvegarder.
-     * @return utilisateur sauvegardé.
-     */
-    public AppUser saveUser(AppUser user) {
+    /** Inscrit un user (unicité + encodage BCrypt). */
+    public AppUser register(AppUser user) {
+        String norm = normalize(user.getUsername());
+        if (userRepository.findByUsername(norm).isPresent()) {
+            throw new IllegalArgumentException("Nom d'utilisateur déjà pris.");
+        }
+        user.setUsername(norm);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
-    /**
-     * Valide les identifiants d'un utilisateur.
-     *
-     * @param username     nom d'utilisateur.
-     * @param rawPassword  mot de passe fourni.
-     * @return true si les identifiants sont corrects, false sinon.
-     */
+    /** Valide identifiants (compare BCrypt). */
     public boolean validateCredentials(String username, String rawPassword) {
-        AppUser user = userRepository.findByUsername(username);
-        return user != null && passwordEncoder.matches(rawPassword, user.getPassword());
+        return findByUsername(username)
+                .map(u -> passwordEncoder.matches(rawPassword, u.getPassword()))
+                .orElse(false);
+    }
+
+    /** Lookup par username (stocké en lowercase). */
+    public Optional<AppUser> findByUsername(String username) {
+        return userRepository.findByUsername(normalize(username));
     }
 }

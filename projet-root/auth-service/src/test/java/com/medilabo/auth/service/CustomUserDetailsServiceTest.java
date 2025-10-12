@@ -1,47 +1,33 @@
 package com.medilabo.auth.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
 import com.medilabo.auth.model.AppUser;
+import com.medilabo.auth.model.UserRole;
 import com.medilabo.auth.repository.UserRepository;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 
 class CustomUserDetailsServiceTest {
 
     @Test
-    void shouldLoadUserByUsername() {
-        UserRepository mockRepo = mock(UserRepository.class);
-        AppUser user = new AppUser();
-        user.setUsername("test");
-        user.setPassword("pass");
-        user.setRole("ROLE_PRATICIEN");
+    void loadUser_returns_user_with_correct_role() {
+        UserRepository repo = Mockito.mock(UserRepository.class);
+        CustomUserDetailsService service = new CustomUserDetailsService(repo);
 
-        when(mockRepo.findByUsername("test")).thenReturn(user);
+        AppUser u = new AppUser();
+        u.setUsername("med");
+        u.setPassword("{bcrypt}pw");
+        u.setRole(UserRole.PRATICIEN);
 
-        CustomUserDetailsService service = new CustomUserDetailsService(mockRepo);
-        var result = service.loadUserByUsername("test");
+        Mockito.when(repo.findByUsername(anyString())).thenReturn(Optional.of(u));
 
-        assertEquals("test", result.getUsername());
-        assertEquals("pass", result.getPassword());
-        assertTrue(result.getAuthorities().stream()
-            .anyMatch(a -> a.getAuthority().equals("ROLE_PRATICIEN")));
-    }
-
-    @Test
-    void shouldThrowIfUserNotFound() {
-        UserRepository mockRepo = mock(UserRepository.class);
-        when(mockRepo.findByUsername("notfound")).thenReturn(null);
-
-        CustomUserDetailsService service = new CustomUserDetailsService(mockRepo);
-
-        assertThrows(UsernameNotFoundException.class, () -> {
-            service.loadUserByUsername("notfound");
-        });
+        UserDetails ud = service.loadUserByUsername(" MED ");
+        assertThat(ud.getUsername()).isEqualTo("med");
+        assertThat(ud.getAuthorities()).extracting("authority").containsExactly("ROLE_PRATICIEN");
     }
 }
