@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
  * Application: com.medilabo.riskassessment.controller
  *
  * Contrôleur REST du microservice risk-assessment-service.
- * Expose l’endpoint /risk/{patientId} qui calcule le niveau de risque
+ * Expose l’endpoint /api/risk/{patientId} qui calcule le niveau de risque
  * en s’appuyant sur RiskAssessmentService.
  *
  * Sécurité :
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
  *  - L’API est protégée par un Resource Server JWT (SecurityConfig).
  */
 @RestController
-@RequestMapping("/risk")
+@RequestMapping("/api/risk")
 public class RiskAssessmentController {
 
     private final RiskAssessmentService riskService;

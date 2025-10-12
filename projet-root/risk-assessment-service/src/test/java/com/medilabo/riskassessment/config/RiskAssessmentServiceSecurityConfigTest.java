@@ -40,7 +40,7 @@ class RiskAssessmentServiceSecurityConfigTest {
     when(riskAssessmentService.assessRiskDetailed(1L))
         .thenReturn(new RiskAssessmentResponse(1L, "John", "Doe", 45, "Borderline"));
 
-    mockMvc.perform(get("/risk/1")
+    mockMvc.perform(get("/api/risk/1")
             .with(jwt().authorities(List.of(new SimpleGrantedAuthority("ROLE_PRATICIEN")))))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.firstName").value("John"))
@@ -49,7 +49,7 @@ class RiskAssessmentServiceSecurityConfigTest {
 
   @Test
   void shouldForbidWithWrongRole() throws Exception {
-    mockMvc.perform(get("/risk/1")
+    mockMvc.perform(get("/api/risk/1")
             .with(jwt().authorities(List.of(new SimpleGrantedAuthority("ROLE_ORGANISATEUR")))))
            .andExpect(status().isForbidden());
   }
