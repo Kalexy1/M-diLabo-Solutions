@@ -35,7 +35,6 @@ public final class TestJwtUtil {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
     }
 
-    // JSON minimal pour nombres/booleens/strings/listes
     private static String toJson(Map<String, Object> map) {
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;

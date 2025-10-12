@@ -15,46 +15,94 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.medilabo.noteservice.model.Note;
 import com.medilabo.noteservice.service.NoteService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+/**
+ * Contrôleur REST du microservice NoteService.
+ * <p>
+ * Gère les opérations CRUD sur les notes médicales associées aux patients.
+ * Tous les endpoints sont sécurisés et accessibles uniquement aux utilisateurs
+ * ayant le rôle {@code PRATICIEN}.
+ * </p>
+ */
 @RestController
 @RequestMapping("/api/notes")
 public class NoteController {
 
+    /**
+     * Service de gestion des notes médicales.
+     */
     private final NoteService service;
 
+    /**
+     * Constructeur du contrôleur de notes.
+     *
+     * @param service le service métier utilisé pour gérer les notes
+     */
     public NoteController(NoteService service) {
         this.service = service;
     }
 
-    // Récupérer toutes les notes d’un patient
+    /**
+     * Récupère toutes les notes associées à un patient donné.
+     *
+     * @param patientId l’identifiant du patient
+     * @return la liste des notes liées à ce patient
+     */
+    @PreAuthorize("hasRole('PRATICIEN')")
     @GetMapping("/patient/{patientId}")
     public List<Note> findByPatient(@PathVariable Long patientId) {
         return service.findByPatientId(patientId);
     }
 
-    // Détail d’une note
+    /**
+     * Récupère une note spécifique à partir de son identifiant.
+     *
+     * @param id l’identifiant de la note
+     * @return la note correspondante
+     */
+    @PreAuthorize("hasRole('PRATICIEN')")
     @GetMapping("/{id}")
     public Note getOne(@PathVariable Long id) {
         return service.getById(id);
     }
 
-    // Créer une note pour un patient
+    /**
+     * Crée une nouvelle note pour un patient donné.
+     *
+     * @param patientId l’identifiant du patient concerné
+     * @param payload   la note à créer
+     * @return la note nouvellement créée
+     */
+    @PreAuthorize("hasRole('PRATICIEN')")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/patient/{patientId}")
     public Note create(@PathVariable Long patientId, @RequestBody Note payload) {
-        payload.setId(null); // ensure create
+        payload.setId(null);
         payload.setPatientId(patientId);
         return service.save(payload);
     }
 
-    // Mettre à jour une note
+    /**
+     * Met à jour une note existante.
+     *
+     * @param id      l’identifiant de la note à mettre à jour
+     * @param payload les nouvelles données de la note
+     * @return la note mise à jour
+     */
+    @PreAuthorize("hasRole('PRATICIEN')")
     @PutMapping("/{id}")
     public Note update(@PathVariable Long id, @RequestBody Note payload) {
         payload.setId(id);
         return service.update(payload);
     }
 
-    // Supprimer une note
+    /**
+     * Supprime une note à partir de son identifiant.
+     *
+     * @param id l’identifiant de la note à supprimer
+     */
+    @PreAuthorize("hasRole('PRATICIEN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {

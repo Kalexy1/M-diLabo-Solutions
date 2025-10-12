@@ -4,24 +4,19 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Application: com.medilabo.noteservice
+ * Point d’entrée principal du microservice <strong>NoteService</strong>.
  * <p>
- * Classe <strong>NoteServiceApplication</strong>.
- * <br/>
- * Rôle : Point d'entrée principal du microservice NoteService.
- * </p>
- * <p>
- * Ce microservice gère les notes médicales des patients à l'aide de MongoDB
- * et expose des endpoints REST pour la création et la consultation.
+ * Ce microservice gère les notes médicales des patients à l’aide d’une base de données MongoDB
+ * et expose des endpoints REST pour la création, la mise à jour et la consultation des notes.
  * </p>
  */
 @SpringBootApplication
 public class NoteServiceApplication {
 
     /**
-     * Méthode principale qui démarre l'application Spring Boot.
+     * Démarre l’application Spring Boot du microservice NoteService.
      *
-     * @param args arguments de la ligne de commande
+     * @param args les arguments de la ligne de commande
      */
     public static void main(String[] args) {
         SpringApplication.run(NoteServiceApplication.class, args);
