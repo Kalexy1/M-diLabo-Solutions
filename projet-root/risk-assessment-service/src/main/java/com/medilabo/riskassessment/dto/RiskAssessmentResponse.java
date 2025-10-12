@@ -1,27 +1,23 @@
 package com.medilabo.riskassessment.dto;
 
 /**
- * Application: com.medilabo.riskassessment.dto
+ * Représente la réponse retournée par le microservice
+ * <strong>risk-assessment-service</strong> après l’évaluation
+ * du risque de diabète d’un patient.
  * <p>
- * Classe <strong>RiskAssessmentResponse</strong>.
- * <br/>
- * Rôle : Représente la réponse envoyée par le microservice <em>risk-assessment-service</em>
- * après évaluation du risque de diabète d’un patient.
- * </p>
- * <p>
- * Cette réponse contient les informations essentielles du patient ainsi que
- * son niveau de risque calculé en fonction de :
+ * Cette classe contient les informations essentielles du patient
+ * ainsi que son niveau de risque calculé selon :
  * <ul>
- *   <li>son âge,</li>
- *   <li>son genre,</li>
- *   <li>et la présence de déclencheurs dans ses notes médicales.</li>
+ *     <li>son âge,</li>
+ *     <li>son sexe,</li>
+ *     <li>et la présence de termes déclencheurs dans ses notes médicales.</li>
  * </ul>
  * </p>
  */
 public class RiskAssessmentResponse {
 
     /**
-     * Identifiant unique du patient concerné.
+     * Identifiant unique du patient concerné par l’évaluation.
      */
     private Long patientId;
 
@@ -31,7 +27,7 @@ public class RiskAssessmentResponse {
     private String firstName;
 
     /**
-     * Nom de famille du patient.
+     * Nom du patient.
      */
     private String lastName;
 
@@ -45,10 +41,10 @@ public class RiskAssessmentResponse {
      * <p>
      * Exemples de valeurs possibles :
      * <ul>
-     *   <li>{@code None} : Aucun risque</li>
-     *   <li>{@code Borderline} : Risque limité</li>
-     *   <li>{@code In Danger} : Patient en danger</li>
-     *   <li>{@code Early onset} : Apparition précoce</li>
+     *     <li>{@code None} — Aucun risque détecté</li>
+     *     <li>{@code Borderline} — Risque limité</li>
+     *     <li>{@code In Danger} — Patient en danger</li>
+     *     <li>{@code Early onset} — Apparition précoce du diabète</li>
      * </ul>
      * </p>
      */
@@ -61,7 +57,7 @@ public class RiskAssessmentResponse {
     }
 
     /**
-     * Constructeur complet.
+     * Constructeur complet pour initialiser toutes les propriétés.
      *
      * @param patientId identifiant du patient
      * @param firstName prénom du patient
@@ -168,10 +164,10 @@ public class RiskAssessmentResponse {
     }
 
     /**
-     * Fournit une représentation textuelle de la réponse,
-     * utile pour le logging et le débogage.
+     * Fournit une représentation textuelle de l’objet, utile pour
+     * le débogage et le logging.
      *
-     * @return chaîne décrivant la réponse d’évaluation du risque
+     * @return représentation textuelle de la réponse de risque
      */
     @Override
     public String toString() {

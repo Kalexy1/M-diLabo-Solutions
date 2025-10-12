@@ -7,32 +7,44 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Application: com.medilabo.riskassessment.controller
- *
- * Contrôleur REST du microservice risk-assessment-service.
- * Expose l’endpoint /api/risk/{patientId} qui calcule le niveau de risque
- * en s’appuyant sur RiskAssessmentService.
- *
- * Sécurité :
- *  - Accès restreint au rôle PRATICIEN via @PreAuthorize.
- *  - L’API est protégée par un Resource Server JWT (SecurityConfig).
+ * Contrôleur REST du microservice <strong>risk-assessment-service</strong>.
+ * <p>
+ * Ce contrôleur expose l’API {@code /api/risk/{patientId}} permettant de calculer
+ * le niveau de risque de diabète d’un patient à partir de ses informations médicales
+ * et de son historique de notes.
+ * </p>
+ * <p>
+ * L’accès à cet endpoint est restreint aux utilisateurs ayant le rôle {@code PRATICIEN}.
+ * L’authentification est gérée par un serveur de ressources JWT configuré dans la
+ * couche de sécurité.
+ * </p>
  */
 @RestController
-@RequestMapping("/api/risk")
+@RequestMapping(path = "/api/risk")
 public class RiskAssessmentController {
 
+    /**
+     * Service applicatif chargé du calcul du niveau de risque.
+     */
     private final RiskAssessmentService riskService;
 
+    /**
+     * Constructeur du contrôleur.
+     *
+     * @param riskService le service responsable du calcul du risque
+     */
     public RiskAssessmentController(RiskAssessmentService riskService) {
         this.riskService = riskService;
     }
 
     /**
-     * GET /risk/{patientId}
-     * Retourne le niveau de risque pour le patient demandé.
+     * Évalue le niveau de risque de diabète pour un patient donné.
+     *
+     * @param patientId l’identifiant du patient
+     * @return une {@link ResponseEntity} contenant le résultat du calcul du risque
      */
     @PreAuthorize("hasRole('PRATICIEN')")
-    @GetMapping("/{patientId}")
+    @GetMapping(path = "/{patientId}")
     public ResponseEntity<RiskAssessmentResponse> getRisk(@PathVariable Long patientId) {
         return ResponseEntity.ok(riskService.assessRiskDetailed(patientId));
     }

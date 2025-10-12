@@ -31,6 +31,5 @@ class RiskAssessmentServiceApplicationTests {
 
     @Test
     void contextLoads() {
-        // Si le contexte ne démarre pas, ce test échouera ici
     }
 }

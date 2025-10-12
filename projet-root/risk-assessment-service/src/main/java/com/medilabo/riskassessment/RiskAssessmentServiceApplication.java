@@ -6,43 +6,38 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Application: com.medilabo.riskassessment
+ * Point d’entrée du microservice <strong>risk-assessment-service</strong>.
  * <p>
- * Classe <strong>RiskAssessmentServiceApplication</strong>.
- * <br/>
- * Rôle : Point d’entrée principal du microservice <em>risk-assessment-service</em>.
- * </p>
- * <p>
- * Ce microservice est chargé d’évaluer le risque de diabète d’un patient
- * en s’appuyant sur :
+ * Ce microservice est responsable de l’évaluation du risque de diabète
+ * pour un patient donné. Il s’appuie sur :
  * <ul>
- *   <li>Les informations personnelles récupérées auprès du <em>patient-service</em>.</li>
- *   <li>L’historique médical (notes) récupéré auprès du <em>note-service</em>.</li>
+ *   <li>les informations personnelles du patient fournies par le microservice
+ *       <strong>patient-service</strong>,</li>
+ *   <li>et l’historique médical (notes) fourni par le microservice
+ *       <strong>note-service</strong>.</li>
  * </ul>
- * Les appels sont effectués via HTTP grâce à un {@link RestTemplate}.
+ * <p>
+ * Les appels inter-services sont effectués via HTTP à l’aide d’un
+ * {@link RestTemplate}.
  * </p>
  */
 @SpringBootApplication
 public class RiskAssessmentServiceApplication {
 
     /**
-     * Méthode principale qui démarre l’application Spring Boot.
+     * Démarre l’application Spring Boot.
      *
-     * @param args arguments passés en ligne de commande
+     * @param args les arguments de la ligne de commande
      */
     public static void main(String[] args) {
         SpringApplication.run(RiskAssessmentServiceApplication.class, args);
     }
 
     /**
-     * Déclare un {@link RestTemplate} comme bean Spring.
-     * <p>
-     * Ce client HTTP est utilisé pour interroger les autres microservices
-     * (par ex. {@code patient-service} et {@code note-service}) via la Gateway
-     * afin de collecter les données nécessaires au calcul du risque.
-     * </p>
+     * Fournit un bean {@link RestTemplate} pour effectuer les appels HTTP
+     * vers les autres microservices via la Gateway.
      *
-     * @return une instance configurée de {@link RestTemplate}
+     * @return une instance de {@link RestTemplate}
      */
     @Bean
     public RestTemplate restTemplate() {
