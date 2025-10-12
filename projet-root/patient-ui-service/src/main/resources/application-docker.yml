@@ -7,14 +7,15 @@ spring:
   thymeleaf:
     cache: true
 
-# Secret identique à auth-service & gateway (passe-le via env dans compose)
-JWT_SECRET: ${JWT_SECRET}
+# Secret JWT partagé (transmis via variable d'environnement JWT_SECRET)
+jwt:
+  secret: ${JWT_SECRET}
 
 # En Docker, on vise le nom du service gateway
 gateway:
   base-url: http://gateway-service:8080
 
-# Chemins DERRIÈRE la gateway (avec /api)
+# Chemins d’API exposés derrière la gateway
 patients:
   api:
     base: /api/patients
@@ -30,3 +31,8 @@ management:
     web:
       exposure:
         include: health,info
+
+logging:
+  level:
+    org.springframework.security: INFO
+    com.medilabo.patientui: INFO

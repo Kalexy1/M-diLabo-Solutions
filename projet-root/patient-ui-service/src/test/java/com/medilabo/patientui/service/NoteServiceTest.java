@@ -41,7 +41,6 @@ class NoteServiceTest {
             return Mono.just(resp);
         };
 
-        // Doit être cohérent avec ton AppConfig pour notes.api.base (peu importe la valeur exacte ici)
         return WebClient.builder()
                 .baseUrl("http://example.test/api/notes")
                 .exchangeFunction(fn)

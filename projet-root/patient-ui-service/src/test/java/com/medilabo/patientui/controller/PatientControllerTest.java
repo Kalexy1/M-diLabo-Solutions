@@ -51,7 +51,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 UserDetailsServiceAutoConfiguration.class,
                 OAuth2ClientAutoConfiguration.class,
                 OAuth2ResourceServerAutoConfiguration.class,
-                ThymeleafAutoConfiguration.class // on évite d’enregistrer le resolver Thymeleaf auto-configuré
+                ThymeleafAutoConfiguration.class
         }
 )
 @AutoConfigureMockMvc(addFilters = false)
@@ -80,7 +80,7 @@ class PatientControllerTest {
                 public void render(Map<String, ?> model,
                                    HttpServletRequest request,
                                    HttpServletResponse response) {
-                    // no-op
+
                 }
             };
         }
@@ -113,11 +113,9 @@ class PatientControllerTest {
 
     @BeforeEach
     void setUp() {
-        // list()
         given(patientService.findAll(nullable(String.class)))
                 .willReturn(List.of(new Patient()));
 
-        // details / edit / risk
         Patient p = new Patient(); p.setId(1L);
         given(patientService.getOne(eq(1L), nullable(String.class))).willReturn(p);
         given(noteService.findByPatient(eq(1L), nullable(String.class))).willReturn(List.of());
@@ -128,10 +126,9 @@ class PatientControllerTest {
         risk.setTriggerCount(0);
         given(riskService.getRisk(eq(1L), nullable(String.class))).willReturn(risk);
 
-        // create() renvoie un patient sauvegardé avec id
         Patient saved = new Patient(); saved.setId(42L);
         given(patientService.create(any(Patient.class), nullable(String.class))).willReturn(saved);
-        // update()/delete() : pas besoin de stubs (retour void côté contrôleur)
+
     }
 
     @Test

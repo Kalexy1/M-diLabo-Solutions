@@ -1,5 +1,9 @@
 package com.medilabo.patientui.config;
 
+import java.nio.charset.StandardCharsets;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,49 +16,54 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.*;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-
+/**
+ * Configuration de sécurité du service UI.
+ * <p>
+ * Les ressources publiques sont en accès libre tandis que les routes sous
+ * {@code /ui/**} nécessitent un JWT valide. La protection CSRF est activée
+ * pour sécuriser les formulaires.
+ * </p>
+ */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    /**
+     * Configure la chaîne de filtres Spring Security pour l’UI.
+     * <p>
+     * Active CSRF avec stockage du jeton en cookie, configure CORS, définit
+     * les règles d’autorisation (accès public à certaines routes, authentification
+     * requise pour {@code /ui/**}) et enregistre les redirections en cas d’accès
+     * non authentifié ou refusé.
+     * </p>
+     *
+     * @param http l’instance {@link HttpSecurity} à configurer
+     * @return la {@link SecurityFilterChain} configurée
+     * @throws Exception en cas d’erreur de configuration
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
             .cors(Customizer.withDefaults())
             .authorizeHttpRequests(auth -> auth
-                // Technique
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                // PUBLICS (laisse passer la redirection et le pseudo-login côté UI/gateway)
                 .requestMatchers("/", "/login", "/auth/login").permitAll()
-
-                // Statique (Thymeleaf/Front)
-                .requestMatchers(
-                    "/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico"
-                ).permitAll()
-
-                // Page d’info "accès refusé" (réservée aux utilisateurs authentifiés)
-                .requestMatchers("/ui/access-denied").authenticated()
-
-                // Toute l’UI nécessite d’être connecté
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
+                .requestMatchers("/ui/access-denied").permitAll()
                 .requestMatchers("/ui/**").authenticated()
-
-                // Par défaut
                 .anyRequest().denyAll()
             )
-            .oauth2ResourceServer(oauth -> oauth
-                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter()))
-            )
+            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter())))
             .exceptionHandling(e -> e
                 .authenticationEntryPoint((req, res, ex) -> {
-                    res.setStatus(303);               // 303 See Other
+                    res.setStatus(303);
                     res.setHeader("Location", "/auth/login");
                 })
                 .accessDeniedHandler((req, res, ex) -> {
@@ -65,6 +74,12 @@ public class SecurityConfig {
             .build();
     }
 
+    /**
+     * Convertisseur d’authentification JWT qui extrait les rôles depuis le claim
+     * {@code roles} et applique le préfixe {@code ROLE_} attendu par Spring Security.
+     *
+     * @return un {@link Converter} de {@link Jwt} vers {@link AbstractAuthenticationToken}
+     */
     @Bean
     public Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthConverter() {
         var rolesConv = new JwtGrantedAuthoritiesConverter();
@@ -76,10 +91,15 @@ public class SecurityConfig {
         return conv;
     }
 
+    /**
+     * Décodeur JWT HMAC (HS256) basé sur un secret partagé.
+     *
+     * @param secret la clé secrète utilisée pour valider la signature des JWT
+     * @return un {@link JwtDecoder} configuré avec la clé HMAC
+     */
     @Bean
-    public JwtDecoder jwtDecoder(@Value("${JWT_SECRET}") String secret) {
-        var key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+    public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
+        SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
     }
 }
-

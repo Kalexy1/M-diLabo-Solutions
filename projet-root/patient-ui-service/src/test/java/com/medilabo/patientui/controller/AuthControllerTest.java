@@ -36,8 +36,8 @@ class AuthControllerTest {
         for (Map.Entry<RequestMappingInfo, HandlerMethod> e : mapping.getHandlerMethods().entrySet()) {
             Set<String> patterns = e.getKey().getPatternValues();
             for (String p : patterns) {
-                if (p.endsWith(suffix)) return p;          // .../login   ou .../access-denied
-                if (p.endsWith("/ui" + suffix)) return p;  // .../ui/login (au cas où)
+                if (p.endsWith(suffix)) return p;
+                if (p.endsWith("/ui" + suffix)) return p;
                 if (p.endsWith("/ui" + suffix.replaceFirst("^/", ""))) return p;
             }
         }
