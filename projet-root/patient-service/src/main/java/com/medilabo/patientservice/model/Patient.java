@@ -6,52 +6,191 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import java.time.LocalDate;
 
+/**
+ * Représente un patient au sein du système.
+ * <p>
+ * Cette entité est mappée à la table {@code patients} de la base de données
+ * et contient les informations personnelles et médicales de base d’un patient.
+ * </p>
+ */
 @Entity
 @Table(name = "patients")
 public class Patient {
 
+    /**
+     * Identifiant unique du patient (clé primaire).
+     * Généré automatiquement par la base de données (AUTO_INCREMENT MySQL).
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL AUTO_INCREMENT
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Prénom du patient.
+     * Ce champ est obligatoire.
+     */
     @NotBlank
     @Column(nullable = false)
     private String firstName;
 
+    /**
+     * Nom de famille du patient.
+     * Ce champ est obligatoire.
+     */
     @NotBlank
     @Column(nullable = false)
     private String lastName;
 
-    @NotNull @Past
+    /**
+     * Date de naissance du patient.
+     * Doit être une date passée.
+     */
+    @NotNull
+    @Past
     @Column(nullable = false)
     private LocalDate birthDate;
 
+    /**
+     * Genre du patient (ex. : "M", "F" ou autre).
+     * Ce champ est obligatoire.
+     */
     @NotBlank
     @Column(nullable = false)
-    private String gender; // "M" / "F" / autre — ou remplace par un enum si tu veux
+    private String gender;
 
+    /**
+     * Adresse postale du patient (optionnelle).
+     */
     private String address;
+
+    /**
+     * Numéro de téléphone du patient (optionnel).
+     */
     private String phone;
 
-    // --- getters/setters ---
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    /**
+     * Retourne l’identifiant unique du patient.
+     *
+     * @return l’identifiant du patient
+     */
+    public Long getId() {
+        return id;
+    }
 
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
+    /**
+     * Définit l’identifiant du patient.
+     *
+     * @param id l’identifiant à définir
+     */
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
+    /**
+     * Retourne le prénom du patient.
+     *
+     * @return le prénom du patient
+     */
+    public String getFirstName() {
+        return firstName;
+    }
 
-    public LocalDate getBirthDate() { return birthDate; }
-    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+    /**
+     * Définit le prénom du patient.
+     *
+     * @param firstName le prénom à définir
+     */
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
 
-    public String getGender() { return gender; }
-    public void setGender(String gender) { this.gender = gender; }
+    /**
+     * Retourne le nom de famille du patient.
+     *
+     * @return le nom du patient
+     */
+    public String getLastName() {
+        return lastName;
+    }
 
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
+    /**
+     * Définit le nom de famille du patient.
+     *
+     * @param lastName le nom à définir
+     */
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
 
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
+    /**
+     * Retourne la date de naissance du patient.
+     *
+     * @return la date de naissance
+     */
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    /**
+     * Définit la date de naissance du patient.
+     *
+     * @param birthDate la date de naissance à définir
+     */
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
+
+    /**
+     * Retourne le genre du patient.
+     *
+     * @return le genre du patient
+     */
+    public String getGender() {
+        return gender;
+    }
+
+    /**
+     * Définit le genre du patient.
+     *
+     * @param gender le genre à définir
+     */
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    /**
+     * Retourne l’adresse postale du patient.
+     *
+     * @return l’adresse du patient
+     */
+    public String getAddress() {
+        return address;
+    }
+
+    /**
+     * Définit l’adresse postale du patient.
+     *
+     * @param address l’adresse à définir
+     */
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    /**
+     * Retourne le numéro de téléphone du patient.
+     *
+     * @return le numéro de téléphone
+     */
+    public String getPhone() {
+        return phone;
+    }
+
+    /**
+     * Définit le numéro de téléphone du patient.
+     *
+     * @param phone le numéro à définir
+     */
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
 }

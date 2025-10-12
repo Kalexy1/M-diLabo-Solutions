@@ -21,5 +21,5 @@ management:
       exposure:
         include: health,info
 
-# JWT : même secret que gateway/auth
-JWT_SECRET: ${JWT_SECRET:change-me-change-me-change-me-change-me}
+jwt:
+  secret: 0123456789abcdefghijklmnopqrstuvwxyz012345

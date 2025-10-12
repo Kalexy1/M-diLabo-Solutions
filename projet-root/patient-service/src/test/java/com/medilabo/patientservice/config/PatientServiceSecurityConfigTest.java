@@ -43,7 +43,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
-        // secret >= 32 octets — doit matcher la conf de ton service
         "JWT_SECRET=0123456789abcdefghijklmnopqrstuvwxyz012345",
         "spring.main.allow-bean-definition-overriding=true"
 })
@@ -55,7 +54,6 @@ class PatientApiSecurityIT {
 
     private static final String SECRET = "0123456789abcdefghijklmnopqrstuvwxyz012345";
 
-    /** Génère un JWT HS256 minimal avec claim "roles". */
     private static String jwt(String sub, List<String> roles, long ttlSeconds) throws Exception {
         Instant now = Instant.now();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
@@ -92,7 +90,6 @@ class PatientApiSecurityIT {
                .andExpect(status().isOk())
                .andExpect(content().json("[]"));
 
-        // liste non vide
         Patient p = new Patient();
         p.setId(1L);
         p.setFirstName("Marie");

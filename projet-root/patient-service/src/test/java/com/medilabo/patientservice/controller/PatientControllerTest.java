@@ -124,7 +124,7 @@ class PatientControllerTest {
         ArgumentCaptor<Patient> captor = ArgumentCaptor.forClass(Patient.class);
         verify(patientService).create(captor.capture());
         assertThat(captor.getValue().getFirstName()).isEqualTo("Marie");
-        assertThat(captor.getValue().getId()).isNull(); // create: pas d'id en entrée
+        assertThat(captor.getValue().getId()).isNull();
     }
 
     // ---------- PUT /api/patients/{id} ----------
