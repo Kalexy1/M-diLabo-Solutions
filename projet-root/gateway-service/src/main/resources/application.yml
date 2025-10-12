@@ -23,8 +23,7 @@ spring:
           uri: http://localhost:8084
           predicates:
             - Path=/ui/**
-          filters:
-            - StripPrefix=1
+          filters: []   # ne pas enlever /ui
 
         - id: ui-root
           uri: http://localhost:8084
@@ -42,7 +41,7 @@ spring:
             - Path=/auth/**
           filters:
             - RemoveRequestHeader=Authorization
-            - PreserveHostHeader=true
+            - StripPrefix=0
 
         - id: login-to-auth
           uri: http://localhost:8085
@@ -52,44 +51,46 @@ spring:
             - SetPath=/auth/login
             - RemoveRequestHeader=Authorization
 
-        - id: register-to-auth
+        # NEW: /logout (compat) -> /auth/logout
+        - id: logout-to-auth
           uri: http://localhost:8085
           predicates:
-            - Path=/register
+            - Path=/logout
           filters:
-            - SetPath=/auth/register
+            - SetPath=/auth/logout
             - RemoveRequestHeader=Authorization
 
-
         # =======================
-        # APIs
+        # APIs (Option B : validation dans chaque MS)
         # =======================
         - id: patient-api
           uri: http://localhost:8081
           predicates:
             - Path=/api/patients/**
           filters:
-            - StripPrefix=2
+            - StripPrefix=0
 
         - id: note-api
           uri: http://localhost:8082
           predicates:
             - Path=/api/notes/**
           filters:
-            - StripPrefix=2
+            - StripPrefix=0
 
         - id: risk-api
           uri: http://localhost:8083
           predicates:
             - Path=/api/risk/**
           filters:
-            - StripPrefix=2
+            - StripPrefix=0
 
       globalcors:
         add-to-simple-url-handler-mapping: true
         corsConfigurations:
           '[/**]':
-            allowedOrigins: "http://localhost:8080"
+            allowedOrigins:
+              - http://localhost:8080
+              - http://localhost:8084
             allowedMethods: "*"
             allowedHeaders: "*"
             allowCredentials: true
@@ -97,9 +98,8 @@ spring:
 logging:
   level:
     org.springframework.cloud.gateway: INFO
-    org.springframework.security: INFO
+    org.springframework.security: DEBUG
     reactor.netty.http.client: WARN
 
-JWT_SECRET: 0123456789abcdefghijklmnopqrstuvwxyz012345
-
-
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}

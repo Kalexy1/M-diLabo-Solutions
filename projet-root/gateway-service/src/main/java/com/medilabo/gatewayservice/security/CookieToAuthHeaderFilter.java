@@ -18,25 +18,49 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+/**
+ * Filtre WebFlux qui recopie un JWT stocké dans un cookie HTTP-only
+ * vers l'en-tête {@code Authorization: Bearer <token>} lorsqu'il est présent.
+ * <p>
+ * Le filtre s'applique avec la plus haute priorité, ignore les routes publiques,
+ * ne modifie pas les requêtes préflight CORS et n'écrase jamais un en-tête
+ * {@code Authorization} déjà défini.
+ * </p>
+ */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CookieToAuthHeaderFilter implements WebFilter {
 
     private static final Logger log = LoggerFactory.getLogger(CookieToAuthHeaderFilter.class);
 
-    // Important : pas de "/" ni "/ui/**" ici (l'UI est protégé)
+    /**
+     * Motifs d'URL publiques pour lesquelles aucune injection d'en-tête n'est effectuée.
+     */
     private static final List<String> PUBLIC_PATTERNS = List.of(
         "/auth/**",
         "/login", "/register", "/logout",
         "/favicon.ico", "/error",
         "/css/**", "/js/**", "/images/**", "/assets/**",
         "/ui/css/**", "/ui/js/**", "/ui/images/**",
-        "/actuator/**" // facultatif
+        "/actuator/**"
     );
 
+    /**
+     * Nom du cookie contenant le JWT.
+     */
     private static final String JWT_COOKIE = "JWT_TOKEN";
+
+    /**
+     * Utilitaire de correspondance de chemins avec motifs Ant.
+     */
     private final AntPathMatcher matcher = new AntPathMatcher();
 
+    /**
+     * Indique si un chemin correspond à l'une des routes publiques.
+     *
+     * @param path le chemin de la requête
+     * @return {@code true} si le chemin est public, sinon {@code false}
+     */
     private boolean isPublic(String path) {
         for (String p : PUBLIC_PATTERNS) {
             if (matcher.match(p, path)) return true;
@@ -44,27 +68,37 @@ public class CookieToAuthHeaderFilter implements WebFilter {
         return false;
     }
 
+    /**
+     * Applique la logique d'injection de l'en-tête {@code Authorization} à partir du cookie JWT.
+     * <ul>
+     *   <li>Autorise sans modification les requêtes {@code OPTIONS} (préflight CORS).</li>
+     *   <li>N'agit pas sur les routes publiques.</li>
+     *   <li>Ne remplace pas un en-tête {@code Authorization} existant.</li>
+     *   <li>Si un cookie JWT est présent et non vide, injecte l'en-tête {@code Authorization} de type Bearer.</li>
+     *   <li>À défaut, laisse la chaîne de filtres décider (pouvant mener à 401/303 selon la configuration).</li>
+     * </ul>
+     *
+     * @param exchange l'échange serveur web
+     * @param chain    la chaîne des filtres Web
+     * @return un {@link Mono} représentant la poursuite du traitement
+     */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         var req = exchange.getRequest();
         var path = req.getURI().getPath();
 
-        // 0) Préflight CORS : on laisse passer tel quel
         if (req.getMethod() == HttpMethod.OPTIONS) {
             return chain.filter(exchange);
         }
 
-        // 1) Routes publiques : ne pas injecter
         if (isPublic(path)) {
             return chain.filter(exchange);
         }
 
-        // 2) Ne pas écraser un Authorization déjà présent
         if (req.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
             return chain.filter(exchange);
         }
 
-        // 3) Injecter depuis le cookie JWT si présent
         MultiValueMap<String, HttpCookie> cookies = req.getCookies();
         HttpCookie jwtCookie = cookies.getFirst(JWT_COOKIE);
         if (jwtCookie != null) {
@@ -83,7 +117,6 @@ public class CookieToAuthHeaderFilter implements WebFilter {
             }
         }
 
-        // 4) Pas de cookie => laisser la sécu décider (401/303)
         return chain.filter(exchange);
     }
 }
