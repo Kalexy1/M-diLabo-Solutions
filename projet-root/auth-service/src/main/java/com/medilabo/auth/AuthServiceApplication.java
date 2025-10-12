@@ -4,20 +4,18 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Application: com.medilabo.auth
+ * Point d'entrée principal du microservice d'authentification.
  * <p>
- * Classe <strong>AuthServiceApplication</strong>.
- * <br/>
- * Rôle: Point d'entrée principal du microservice d'authentification.
+ * Cette classe démarre l'application Spring Boot pour le service d'authentification.
  * </p>
  */
 @SpringBootApplication
 public class AuthServiceApplication {
 
     /**
-     * main: Démarre l'application Spring Boot.
+     * Démarre l'application Spring Boot.
      *
-     * @param args paramètres de ligne de commande.
+     * @param args les arguments de la ligne de commande
      */
     public static void main(String[] args) {
         SpringApplication.run(AuthServiceApplication.class, args);

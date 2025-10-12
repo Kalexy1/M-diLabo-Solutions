@@ -16,17 +16,63 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Composant responsable de l'émission de JSON Web Tokens (JWT) signés (HS256).
+ * <p>
+ * Les paramètres (secret, TTL, issuer, audience, etc.) sont injectés via la
+ * configuration Spring et utilisés pour construire et signer les tokens.
+ * </p>
+ */
 @Component
 public class JwtIssuer {
 
+    /**
+     * Clé secrète (octets) utilisée pour la signature HMAC.
+     */
     private final byte[] secret;
+
+    /**
+     * Durée de vie du token, en secondes.
+     */
     private final long ttlSeconds;
+
+    /**
+     * Émetteur (claim {@code iss}) du JWT.
+     */
     private final String issuer;
+
+    /**
+     * Public visé (claim {@code aud}) du JWT.
+     */
     private final List<String> audience;
+
+    /**
+     * Indique s'il faut inclure un identifiant unique (claim {@code jti}).
+     */
     private final boolean includeJti;
+
+    /**
+     * Indique s'il faut inclure une date de non-validité avant (claim {@code nbf}).
+     */
     private final boolean includeNbf;
+
+    /**
+     * Signer JOSE pour HS256.
+     */
     private final JWSSigner signer;
 
+    /**
+     * Construit le composant d'émission de JWT.
+     *
+     * @param secret         la clé secrète (doit faire au moins 32 octets)
+     * @param ttlSeconds     durée de vie du token en secondes
+     * @param issuer         valeur du claim {@code iss}
+     * @param audienceCsv    liste des audiences séparées par des virgules
+     * @param includeJti     {@code true} pour inclure le claim {@code jti}
+     * @param includeNbf     {@code true} pour inclure le claim {@code nbf}
+     * @throws IllegalArgumentException si le secret est trop court
+     * @throws IllegalStateException    si l'initialisation du signer échoue
+     */
     public JwtIssuer(
             @Value("${JWT_SECRET}") String secret,
             @Value("${JWT_TTL_SECONDS:7200}") long ttlSeconds,
@@ -50,23 +96,51 @@ public class JwtIssuer {
         }
     }
 
-    /** Émission depuis authorities Spring (ROLE_X -> X dans claim 'roles'). */
+    /**
+     * Émet un JWT à partir d'un nom d'utilisateur et d'autorisations Spring.
+     * <p>
+     * Les autorités de type {@code ROLE_X} sont converties en {@code X} dans le claim {@code roles}.
+     * Le sujet est normalisé en minuscules.
+     * </p>
+     *
+     * @param username    le nom d'utilisateur
+     * @param authorities la liste des autorités Spring Security
+     * @return le token JWT signé et sérialisé
+     * @throws RuntimeException si l'émission du token échoue
+     */
     public String issue(String username, List<? extends GrantedAuthority> authorities) {
         String subject = normalize(username);
         List<String> roles = authorities == null ? List.of() :
                 authorities.stream()
-                        .map(GrantedAuthority::getAuthority)      // "ROLE_X"
+                        .map(GrantedAuthority::getAuthority)
                         .map(a -> a.startsWith("ROLE_") ? a.substring(5) : a)
                         .collect(Collectors.toList());
         return internalIssue(subject, roles);
     }
 
-    /** Émission pratique depuis un AppUser. */
+    /**
+     * Émet un JWT à partir d'un {@link AppUser}.
+     * <p>
+     * Le sujet correspond au nom d'utilisateur normalisé et le claim {@code roles}
+     * contient le nom du rôle de l'utilisateur.
+     * </p>
+     *
+     * @param user l'utilisateur source
+     * @return le token JWT signé et sérialisé
+     * @throws RuntimeException si l'émission du token échoue
+     */
     public String issue(AppUser user) {
         return internalIssue(normalize(user.getUsername()), List.of(user.getRole().name()));
     }
 
-    // Impl
+    /**
+     * Construit et signe le JWT avec les claims standard et personnalisés.
+     *
+     * @param subjectLower sujet (nom d'utilisateur) déjà normalisé en minuscules
+     * @param roles        rôles applicatifs à inclure dans le claim {@code roles}
+     * @return le token JWT signé et sérialisé
+     * @throws RuntimeException si l'émission du token échoue
+     */
     private String internalIssue(String subjectLower, List<String> roles) {
         try {
             Instant now = Instant.now();
@@ -91,6 +165,12 @@ public class JwtIssuer {
         }
     }
 
+    /**
+     * Transforme une chaîne CSV d'audiences en liste immuable.
+     *
+     * @param csv la chaîne CSV (peut être nulle ou vide)
+     * @return une liste immuable des audiences, ou une liste vide si aucune n'est fournie
+     */
     private static List<String> parseAudience(String csv) {
         if (csv == null || csv.isBlank()) return List.of();
         String[] parts = csv.split(",");
@@ -102,6 +182,12 @@ public class JwtIssuer {
         return Collections.unmodifiableList(out);
     }
 
+    /**
+     * Normalise un nom d'utilisateur (trim + minuscules).
+     *
+     * @param username le nom d'utilisateur d'origine (peut être {@code null})
+     * @return le nom d'utilisateur normalisé ou {@code null} si l'entrée est nulle
+     */
     private static String normalize(String username) {
         return username == null ? null : username.trim().toLowerCase();
     }

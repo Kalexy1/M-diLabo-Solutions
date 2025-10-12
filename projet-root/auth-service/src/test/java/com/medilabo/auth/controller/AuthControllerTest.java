@@ -32,7 +32,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "security.jwt.ttl-seconds=43200",
     "security.jwt.cookie.secure=false",
     "security.jwt.cookie.samesite=Lax",
-    // on simule le gateway en local pour les redirections absolues du contrôleur
     "ui.base-url=http://localhost:8080"
 })
 class AuthControllerTest {
@@ -65,7 +64,6 @@ class AuthControllerTest {
                 .param("password", "pwd")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
-            // accepte soit l'ancienne redirection relative, soit la nouvelle absolue vers le gateway
             .andExpect(header().string("Location", anyOf(
                 endsWith("/ui/"),
                 endsWith("/ui/patients")
@@ -108,7 +106,6 @@ class AuthControllerTest {
                 .param("role", "PRATICIEN")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
-            // accepte relative /ui/ ou absolue vers /ui/patients
             .andExpect(header().string("Location", anyOf(
                 endsWith("/ui/"),
                 endsWith("/ui/patients")
