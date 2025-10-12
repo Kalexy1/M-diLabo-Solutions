@@ -1,37 +1,95 @@
+server:
+  port: 8080
+  forward-headers-strategy: framework
+
 spring:
+  application:
+    name: gateway-service
+  main:
+    web-application-type: reactive
   cloud:
     gateway:
       default-filters:
         - PreserveHostHeader
+        - RewriteLocationResponseHeader=AS_IN_REQUEST, Location
+        - RemoveResponseHeader=Server
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin RETAIN_FIRST
+
       routes:
-        - id: auth-service
-          uri: http://auth-service:8085
-          predicates:
-            - Path=/auth/**
-
-        - id: patient-service
-          uri: http://patient-service:8081
-          predicates:
-            - Path=/patients/**
-
-        - id: note-service
-          uri: http://note-service:8082
-          predicates:
-            - Path=/notes/**
-
-        - id: risk-assessment-service
-          uri: http://risk-assessment-service:8083
-          predicates:
-            - Path=/risk/**
-
-        - id: access-denied-page
-          uri: http://patient-ui-service:8084
-          predicates:
-            - Path=/access-denied
-
-        - id: patient-ui-service
-          uri: http://patient-ui-service:8084
+        # =======================
+        # FRONT / UI
+        # =======================
+        - id: patient-ui
+          uri: http://localhost:8084
           predicates:
             - Path=/ui/**
           filters:
             - StripPrefix=1
+
+        - id: ui-root
+          uri: http://localhost:8084
+          predicates:
+            - Path=/
+          filters:
+            - SetPath=/
+
+        # =======================
+        # AUTH
+        # =======================
+        - id: auth-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/auth/**
+          filters:
+            - RemoveRequestHeader=Authorization
+            # ❗ NE PAS retirer Cookie, sinon POST /register échoue
+            - PreserveHostHeader=true
+
+        - id: login-to-auth
+          uri: http://localhost:8085
+          predicates:
+            - Path=/login
+          filters:
+            - SetPath=/auth/login
+            - RemoveRequestHeader=Authorization
+
+        # =======================
+        # APIs
+        # =======================
+        - id: patient-api
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/patients/**
+          filters:
+            - StripPrefix=2
+
+        - id: note-api
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/notes/**
+          filters:
+            - StripPrefix=2
+
+        - id: risk-api
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/risk/**
+          filters:
+            - StripPrefix=2
+
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:8080"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.security: INFO
+    reactor.netty.http.client: WARN
+
+JWT_SECRET: 0123456789abcdefghijklmnopqrstuvwxyz012345

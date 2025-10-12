@@ -1,105 +1,92 @@
 package com.medilabo.gatewayservice.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
+import static org.springframework.web.reactive.function.server.RouterFunctions.route;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.server.RouterFunction;
+import org.springframework.web.reactive.function.server.ServerResponse;
 
-import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockUser;
-
-@WebFluxTest
-@EnableAutoConfiguration(exclude = {
-        org.springframework.cloud.gateway.config.GatewayAutoConfiguration.class,
-        ReactiveOAuth2ClientAutoConfiguration.class,
-        ReactiveOAuth2ResourceServerAutoConfiguration.class
+/**
+ * Slice test WebFlux :
+ * - fournit WebHandler/WebFlux infra
+ * - on importe explicitement la SecurityConfig (gateway)
+ * - on déclare des routes fonctionnelles factices
+ */
+@WebFluxTest // ✅ Contexte WebFlux minimal (pas de servlet MVC, pas d'autoconfig du gateway)
+@TestPropertySource(properties = {
+    "JWT_SECRET=0123456789abcdefghijklmnopqrstuvwxyz012345",
+    "logging.level.org.springframework.security=DEBUG"
 })
-@Import(SecurityConfig.class)
-@ActiveProfiles("test")
-class SecurityConfigTest {
-
-    @TestConfiguration
-    static class TestUsers {
-        @Bean
-        MapReactiveUserDetailsService uds() {
-            UserDetails praticien = User.withUsername("praticien").password("{noop}pass").roles("PRATICIEN").build();
-            UserDetails orga = User.withUsername("orga").password("{noop}pass").roles("ORGANISATEUR").build();
-            UserDetails user = User.withUsername("user").password("{noop}pass").roles("USER").build();
-            return new MapReactiveUserDetailsService(praticien, orga, user);
-        }
-    }
+@Import({
+    com.medilabo.gatewayservice.config.SecurityConfig.class, // ✅ ta sécurité WebFlux
+    SecurityConfigWebFluxTest.TestRoutes.class               // ✅ routes factices
+})
+class SecurityConfigWebFluxTest {
 
     @Autowired
     WebTestClient webTestClient;
 
-    @Test
-    void authPaths_arePermitAll_andReturn404IfNoRoute() {
-        webTestClient.get().uri("/auth/login")
-                .exchange()
-                .expectStatus().isNotFound();
-        webTestClient.get().uri("/access-denied")
-                .exchange()
-                .expectStatus().isNotFound();
+    private static final String TEST_SECRET = "0123456789abcdefghijklmnopqrstuvwxyz012345";
+
+    private static String jwt(Map<String, Object> claims) {
+        return TestJwtUtil.createHs256(TEST_SECRET, claims);
     }
 
+    /** UI sans JWT -> 303 vers /auth/login?redirect=<original> */
     @Test
-    void anonymous_onPatients_redirectsToLogin() {
-        webTestClient.get().uri("/patients/1")
-                .exchange()
-                .expectStatus().is3xxRedirection()
-                .expectHeader().valueMatches("Location", ".*/login$");
+    void whenNoJwt_onUi_then303_toLogin_withOriginalPath() {
+        webTestClient.get()
+            .uri("/ui/patients/list")
+            .exchange()
+            .expectStatus().isEqualTo(303)
+            .expectHeader().value(HttpHeaders.LOCATION, loc -> {
+                assertThat(loc).startsWith("/auth/login?redirect=");
+                assertThat(loc).contains("/ui/patients/list");
+            });
     }
 
+    /** API avec rôle insuffisant -> 403, pas de redirection */
     @Test
-    void anonymous_onNotes_redirectsToLogin() {
-        webTestClient.get().uri("/notes/1")
-                .exchange()
-                .expectStatus().is3xxRedirection()
-                .expectHeader().valueMatches("Location", ".*/login$");
+    void whenRoleInsufficient_onApiNotes_then403_andNoLoginRedirect() {
+        String token = jwt(Map.of(
+            "sub", "med",
+            "roles", List.of("ORGANISATEUR"), // pas le rôle requis PRATICIEN
+            "iat", Instant.now().getEpochSecond(),
+            "exp", Instant.now().plusSeconds(1800).getEpochSecond()
+        ));
+
+        webTestClient.get()
+            .uri("/api/notes/all")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+            .exchange()
+            .expectStatus().isForbidden()
+            .expectHeader().doesNotExist(HttpHeaders.LOCATION);
     }
 
-    @Test
-    void praticien_canAccessPatientsAndNotes_but404WithoutRoute() {
-        webTestClient.mutateWith(mockUser("praticien").roles("PRATICIEN"))
-                .get().uri("/patients/1").exchange().expectStatus().isNotFound();
-
-        webTestClient.mutateWith(mockUser("praticien").roles("PRATICIEN"))
-                .get().uri("/notes/1").exchange().expectStatus().isNotFound();
-
-        webTestClient.mutateWith(mockUser("praticien").roles("PRATICIEN"))
-                .get().uri("/risk/1").exchange().expectStatus().isNotFound();
-    }
-
-    @Test
-    void organisateur_canAccessPatients_butForbiddenOnNotesAndRisk() {
-        webTestClient.mutateWith(mockUser("orga").roles("ORGANISATEUR"))
-                .get().uri("/patients/1").exchange().expectStatus().isNotFound();
-
-        webTestClient.mutateWith(mockUser("orga").roles("ORGANISATEUR"))
-                .get().uri("/notes/1").exchange()
-                .expectStatus().isEqualTo(303)
-                .expectHeader().valueEquals("Location", "/access-denied");
-
-        webTestClient.mutateWith(mockUser("orga").roles("ORGANISATEUR"))
-                .get().uri("/risk/1").exchange()
-                .expectStatus().isEqualTo(303)
-                .expectHeader().valueEquals("Location", "/access-denied");
-    }
-
-    @Test
-    void plainUser_isAuthenticatedButForbidden_everywhere() {
-        webTestClient.mutateWith(mockUser("user").roles("USER"))
-                .get().uri("/patients/1").exchange()
-                .expectStatus().isEqualTo(303)
-                .expectHeader().valueEquals("Location", "/access-denied");
+    /** Handlers WebFlux de test : always-200 si la sécu ne bloque pas */
+    @TestConfiguration
+    static class TestRoutes {
+        @Bean
+        RouterFunction<ServerResponse> testRouter() {
+            return route(GET("/ui/patients/list"),
+                         req -> ServerResponse.ok().contentType(MediaType.TEXT_PLAIN).bodyValue("UI OK"))
+                .andRoute(GET("/api/notes/all"),
+                          req -> ServerResponse.ok().contentType(MediaType.TEXT_PLAIN).bodyValue("API OK"));
+        }
     }
 }

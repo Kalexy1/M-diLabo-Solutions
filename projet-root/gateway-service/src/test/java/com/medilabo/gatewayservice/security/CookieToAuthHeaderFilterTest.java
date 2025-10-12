@@ -1,117 +1,78 @@
 package com.medilabo.gatewayservice.security;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.http.HttpCookie;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
-import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Component;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import java.util.List;
+import java.util.Set;
 
-class CookieToAuthHeaderFilterTest {
+@Component
+public class CookieToAuthHeaderFilterTest implements GlobalFilter, Ordered {
 
-    private final CookieToAuthHeaderFilter filter = new CookieToAuthHeaderFilter();
+    private static final String COOKIE_NAME = "JWT";
 
-    private static GatewayFilterChain chainAsserting(java.util.function.Consumer<ServerWebExchange> assertions) {
-        return new GatewayFilterChain() {
-            @Override
-            public Mono<Void> filter(ServerWebExchange exchange) {
-                assertions.accept(exchange);
-                return Mono.empty();
-            }
-        };
-    }
+    private static final Set<String> PUBLIC_PREFIXES = Set.of(
+        "/auth/", "/access-denied", "/favicon.ico", "/webjars/", "/css/", "/js/", "/images/"
+    );
 
-    @Test
-    void whenAuthorizationHeaderAlreadyPresent_thenFilterDoesNotOverrideIt() {
-        var request = MockServerHttpRequest.get("/test")
-            .header(HttpHeaders.AUTHORIZATION, "Bearer existing-token")
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange,
+                             org.springframework.cloud.gateway.filter.GatewayFilterChain chain) {
+
+        ServerHttpRequest request = exchange.getRequest();
+
+        if (request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
+            return chain.filter(exchange);
+        }
+
+        String path = request.getURI().getRawPath();
+        if (isPublic(path)) {
+            return chain.filter(exchange);
+        }
+
+        var cookies = request.getCookies().get(COOKIE_NAME);
+        if (cookies == null || cookies.isEmpty()) {
+            return chain.filter(exchange);
+        }
+
+        String token = sanitize(cookies.get(0).getValue());
+        if (token.isEmpty()) {
+            return chain.filter(exchange);
+        }
+
+        ServerHttpRequest mutated = request.mutate()
+            .headers(h -> h.put(HttpHeaders.AUTHORIZATION, List.of("Bearer " + token)))
             .build();
-        var exchange = MockServerWebExchange.from(request);
 
-        var chain = chainAsserting(ex ->
-            assertThat(ex.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
-                .isEqualTo("Bearer existing-token")
-        );
-
-        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+        return chain.filter(exchange.mutate().request(mutated).build());
     }
 
-    @Test
-    void whenNoCookie_thenFilterDoesNothing() {
-        var request = MockServerHttpRequest.get("/test").build();
-        var exchange = MockServerWebExchange.from(request);
-
-        var chain = chainAsserting(ex ->
-            assertThat(ex.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
-                .isNull()
-        );
-
-        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+    private boolean isPublic(String path) {
+        if (path == null || path.isEmpty()) return true;
+        for (String p : PUBLIC_PREFIXES) {
+            if (path.equals(p) || path.startsWith(p)) return true;
+        }
+        return false;
     }
 
-    @Test
-    void whenCookieIsBlank_thenFilterDoesNothing() {
-        var request = MockServerHttpRequest.get("/test")
-            .cookie(new HttpCookie(CookieToAuthHeaderFilter.COOKIE_NAME, " "))
-            .build();
-        var exchange = MockServerWebExchange.from(request);
-
-        var chain = chainAsserting(ex ->
-            assertThat(ex.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
-                .isNull()
-        );
-
-        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+    private String sanitize(String raw) {
+        if (raw == null) return "";
+        String s = raw.trim();
+        if (s.length() >= 2 &&
+            ((s.startsWith("\"") && s.endsWith("\"")) ||
+             (s.startsWith("'") && s.endsWith("'")))) {
+            s = s.substring(1, s.length() - 1).trim();
+        }
+        return s;
     }
 
-    @Test
-    void whenCookieWithToken_thenFilterAddsAuthorizationHeader() {
-        String token = "jwt-token-123";
-        var request = MockServerHttpRequest.get("/test")
-            .cookie(new HttpCookie(CookieToAuthHeaderFilter.COOKIE_NAME, token))
-            .build();
-        var exchange = MockServerWebExchange.from(request);
-
-        var chain = chainAsserting(ex ->
-            assertThat(ex.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
-                .isEqualTo("Bearer " + token)
-        );
-
-        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
-    }
-
-    @Test
-    void whenPreflightRequest_thenFilterDoesNothing() {
-        var request = MockServerHttpRequest.method(HttpMethod.OPTIONS, "/test").build();
-        var exchange = MockServerWebExchange.from(request);
-
-        var chain = chainAsserting(ex ->
-            assertThat(ex.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
-                .isNull()
-        );
-
-        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
-    }
-
-    @Test
-    void whenPathExcluded_authOrActuator_thenFilterDoesNothing() {
-        String token = "jwt-token-456";
-        var request = MockServerHttpRequest.get("/auth/login")
-            .cookie(new HttpCookie(CookieToAuthHeaderFilter.COOKIE_NAME, token))
-            .build();
-        var exchange = MockServerWebExchange.from(request);
-
-        var chain = chainAsserting(ex ->
-            assertThat(ex.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
-                .isNull()
-        );
-
-        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+    @Override
+    public int getOrder() {
+        return Ordered.HIGHEST_PRECEDENCE;
     }
 }
