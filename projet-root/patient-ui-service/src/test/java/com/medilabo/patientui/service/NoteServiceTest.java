@@ -1,63 +1,98 @@
 package com.medilabo.patientui.service;
 
-import org.junit.jupiter.api.BeforeEach;
+import com.medilabo.patientui.model.Note;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.ExchangeFunction;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 
 class NoteServiceTest {
 
-    private RestTemplate restTemplate;
-    private NoteService noteService;
+    /** Fabrique un WebClient qui renvoie (status, bodyJson), en capturant le header Authorization si demandé. */
+    private static WebClient clientReturning(
+            HttpStatus status, String bodyJson, AtomicReference<String> seenAuthHeader) {
 
-    @BeforeEach
-    void setUp() {
-        restTemplate = mock(RestTemplate.class);
-        noteService = new NoteService(restTemplate);
+        ExchangeFunction fn = request -> {
+            if (seenAuthHeader != null) {
+                seenAuthHeader.set(request.headers().getFirst(HttpHeaders.AUTHORIZATION));
+            }
+            var factory = new DefaultDataBufferFactory();
+            Flux<DataBuffer> body = (bodyJson == null || bodyJson.isBlank())
+                    ? Flux.empty()
+                    : Flux.just(factory.wrap(bodyJson.getBytes(StandardCharsets.UTF_8)));
+
+            ClientResponse resp = ClientResponse.create(status)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .body(body)
+                    .build();
+            return Mono.just(resp);
+        };
+
+        // Doit être cohérent avec ton AppConfig pour notes.api.base (peu importe la valeur exacte ici)
+        return WebClient.builder()
+                .baseUrl("http://example.test/api/notes")
+                .exchangeFunction(fn)
+                .build();
     }
 
     @Test
-    void getNotesByPatientId_shouldReturnListOfNotes() {
-        List<Map<String, Object>> mockNotes = List.of(
-            Map.of("contenu", "Fumeur"),
-            Map.of("contenu", "Anticorps")
-        );
+    void findByPatient_returnsList_and_sendsAuthorization() {
+        String json = """
+            [
+              {"id":1,"patientId":99,"content":"Vertiges"},
+              {"id":2,"patientId":99,"content":"Taille 172cm"}
+            ]
+        """;
+        AtomicReference<String> seenAuth = new AtomicReference<>();
+        WebClient client = clientReturning(HttpStatus.OK, json, seenAuth);
 
-        Long patientId = 1L;
-        String expectedUrl = "http://gateway-service:8080/notes/patient/" + patientId;
+        NoteService service = new NoteService(client);
 
-        when(restTemplate.getForObject(expectedUrl, List.class)).thenReturn(mockNotes);
-
-        List<Map<String, Object>> result = noteService.getNotesByPatientId(patientId);
-
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).get("contenu")).isEqualTo("Fumeur");
-        assertThat(result.get(1).get("contenu")).isEqualTo("Anticorps");
+        List<Note> notes = service.findByPatient(99L, "jwt-123");
+        assertThat(notes).hasSize(2);
+        assertThat(notes.get(0).getId()).isEqualTo(1L);
+        assertThat(notes.get(0).getPatientId()).isEqualTo(99L);
+        assertThat(notes.get(0).getContent()).isEqualTo("Vertiges");
+        assertThat(seenAuth.get()).isEqualTo("Bearer jwt-123");
     }
 
     @Test
-    void ajouterNote_shouldCallPostForObject() {
-        Long patientId = 2L;
-        String contenu = "Cholestérol élevé";
-        String expectedUrl = "http://gateway-service:8080/notes";
+    void findByPatient_emptyBody_returnsEmptyList() {
+        WebClient client = clientReturning(HttpStatus.OK, "[]", null);
+        NoteService service = new NoteService(client);
 
-        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        List<Note> notes = service.findByPatient(123L, "t");
+        assertThat(notes).isEmpty();
+    }
 
-        when(restTemplate.postForObject(eq(expectedUrl), any(), eq(Void.class))).thenReturn(null);
+    @Test
+    void createForPatient_returnsCreatedNote() {
+        String json = """
+            {"id":1001,"patientId":77,"content":"Nouvelle note"}
+        """;
+        WebClient client = clientReturning(HttpStatus.CREATED, json, null);
 
-        noteService.ajouterNote(patientId, contenu);
+        NoteService service = new NoteService(client);
 
-        verify(restTemplate, times(1)).postForObject(eq(expectedUrl), captor.capture(), eq(Void.class));
+        Note payload = new Note();
+        payload.setContent("Nouvelle note");
 
-        Map<String, Object> sentData = captor.getValue();
-        assertThat(sentData.get("patientId")).isEqualTo(patientId);
-        assertThat(sentData.get("contenu")).isEqualTo(contenu);
+        Note saved = service.createForPatient(77L, payload, "jwt-x");
+        assertThat(saved.getId()).isEqualTo(1001L);
+        assertThat(saved.getPatientId()).isEqualTo(77L);
+        assertThat(saved.getContent()).isEqualTo("Nouvelle note");
     }
 }

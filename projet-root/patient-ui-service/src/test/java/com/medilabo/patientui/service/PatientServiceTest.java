@@ -1,74 +1,147 @@
 package com.medilabo.patientui.service;
 
 import com.medilabo.patientui.model.Patient;
-import com.medilabo.patientui.repository.PatientRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.*;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 
 class PatientServiceTest {
 
-    private PatientRepository patientRepository;
-    private PatientService patientService;
+    private static WebClient clientReturning(
+            HttpStatus status, String jsonBody, AtomicReference<String> seenAuthHeader
+    ) {
+        ExchangeFunction fn = req -> {
+            if (seenAuthHeader != null) {
+                seenAuthHeader.set(req.headers().getFirst(HttpHeaders.AUTHORIZATION));
+            }
+            DefaultDataBufferFactory f = new DefaultDataBufferFactory();
+            Flux<DataBuffer> body = (jsonBody == null || jsonBody.isEmpty())
+                    ? Flux.empty()
+                    : Flux.just(f.wrap(jsonBody.getBytes(StandardCharsets.UTF_8)));
 
-    private Patient patient;
+            ClientResponse resp = ClientResponse.create(status)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .body(body)
+                    .build();
+            return Mono.just(resp);
+        };
 
-    @BeforeEach
-    void setUp() {
-        patientRepository = mock(PatientRepository.class);
-        patientService = new PatientService(patientRepository);
-
-        patient = new Patient();
-        patient.setId(1L);
-        patient.setNom("Doe");
-        patient.setPrenom("John");
-        patient.setGenre("M");
-        patient.setDateNaissance(LocalDate.of(1990, 1, 1));
+        return WebClient.builder()
+                .baseUrl("http://example.test/api/patients")
+                .exchangeFunction(fn)
+                .build();
     }
 
     @Test
-    void findAll_shouldReturnListOfPatients() {
-        when(patientRepository.findAll()).thenReturn(List.of(patient));
+    void findAll_returnsList_and_sendsAuthorizationHeader() {
+        String json = """
+            [
+              {
+                "id": 1,
+                "firstName": "Marie",
+                "lastName": "Curie",
+                "birthDate": "1867-11-07",
+                "gender": "F",
+                "address": "Paris",
+                "phone": "0102030405"
+              }
+            ]
+            """;
+        AtomicReference<String> seen = new AtomicReference<>();
+        WebClient client = clientReturning(HttpStatus.OK, json, seen);
 
-        List<Patient> result = patientService.findAll();
+        PatientService service = new PatientService(client);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getNom()).isEqualTo("Doe");
-        verify(patientRepository).findAll();
+        List<Patient> res = service.findAll("jwt-abc");
+        assertThat(res).hasSize(1);
+        assertThat(res.get(0).getLastName()).isEqualTo("Curie");
+
+        assertThat(seen.get()).isEqualTo("Bearer jwt-abc");
     }
 
     @Test
-    void findById_shouldReturnPatient() {
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+    void getOne_returnsPatient() {
+        String json = """
+            {
+              "id": 5,
+              "firstName": "John",
+              "lastName": "Doe",
+              "birthDate": "1990-01-01",
+              "gender": "M"
+            }
+            """;
+        WebClient client = clientReturning(HttpStatus.OK, json, null);
+        PatientService service = new PatientService(client);
 
-        Optional<Patient> result = patientService.findById(1L);
-
-        assertThat(result).isPresent();
-        assertThat(result.get().getPrenom()).isEqualTo("John");
-        verify(patientRepository).findById(1L);
+        Patient p = service.getOne(5L, "t");
+        assertThat(p.getId()).isEqualTo(5L);
+        assertThat(p.getFirstName()).isEqualTo("John");
     }
 
     @Test
-    void save_shouldSaveAndReturnPatient() {
-        when(patientRepository.save(any(Patient.class))).thenReturn(patient);
+    void create_returnsCreatedPatient() {
+        String json = """
+            {
+              "id": 9,
+              "firstName": "Alice",
+              "lastName": "Liddell",
+              "birthDate": "1995-05-05",
+              "gender": "F"
+            }
+            """;
+        WebClient client = clientReturning(HttpStatus.CREATED, json, null);
+        PatientService service = new PatientService(client);
 
-        Patient result = patientService.save(patient);
+        Patient req = new Patient();
+        req.setFirstName("Alice");
+        req.setLastName("Liddell");
+        req.setBirthDate(LocalDate.of(1995,5,5));
+        req.setGender("F");
 
-        assertThat(result.getId()).isEqualTo(1L);
-        verify(patientRepository).save(patient);
+        Patient saved = service.create(req, "t");
+        assertThat(saved.getId()).isEqualTo(9L);
+        assertThat(saved.getFirstName()).isEqualTo("Alice");
     }
 
     @Test
-    void deleteById_shouldCallRepository() {
-        patientService.deleteById(1L);
+    void update_returnsUpdatedPatient() {
+        String json = """
+            {
+              "id": 1,
+              "firstName": "Updated",
+              "lastName": "Curie",
+              "birthDate": "1867-11-07",
+              "gender": "F"
+            }
+            """;
+        WebClient client = clientReturning(HttpStatus.OK, json, null);
+        PatientService service = new PatientService(client);
 
-        verify(patientRepository).deleteById(1L);
+        Patient payload = new Patient();
+        payload.setFirstName("Updated");
+
+        Patient updated = service.update(1L, payload, "t");
+        assertThat(updated.getFirstName()).isEqualTo("Updated");
+    }
+
+    @Test
+    void delete_noContent_ok() {
+        WebClient client = clientReturning(HttpStatus.NO_CONTENT, null, null);
+        PatientService service = new PatientService(client);
+
+        service.delete(77L, "t");
     }
 }

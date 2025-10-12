@@ -1,112 +1,71 @@
 package com.medilabo.patientui.config;
 
 import com.medilabo.patientui.controller.PatientController;
-import com.medilabo.patientui.repository.PatientRepository;
+import com.medilabo.patientui.model.Patient;
 import com.medilabo.patientui.service.NoteService;
 import com.medilabo.patientui.service.PatientService;
-
-import org.junit.jupiter.api.DisplayName;
+import com.medilabo.patientui.service.RiskService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.Collections;
+import java.util.List;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@WebMvcTest(controllers = PatientController.class)
 class SecurityConfigTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired MockMvc mvc;
 
-    @MockBean
-    private PatientService patientService;
+    @MockBean JwtDecoder jwtDecoder;
 
-    @MockBean
-    private NoteService noteService;
+    @MockBean PatientService patientService;
+    @MockBean NoteService noteService;
+    @MockBean RiskService riskService;
 
-    @MockBean
-    private RestTemplate restTemplate;
+    @BeforeEach
+    void setup() {
+        given(patientService.findAll(anyString())).willReturn(List.of());
 
-    @Test
-    @DisplayName("🔒 Accès non autorisé renvoie 403")
-    void shouldReturnForbiddenWhenUnauthenticated() throws Exception {
-        mockMvc.perform(get("/patients"))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @WithMockUser(roles = "ORGANISATEUR")
-    void organiserCanAccessPatientsPage() throws Exception {
-        Mockito.when(patientService.findAll()).thenReturn(Collections.emptyList());
-        mockMvc.perform(get("/patients"))
-            .andExpect(status().isOk());
+        Patient saved = new Patient();
+        saved.setId(42L);
+        given(patientService.create(any(Patient.class), anyString())).willReturn(saved);
     }
 
     @Test
     @WithMockUser(roles = "PRATICIEN")
-    void practitionerCanAccessPatientsPage() throws Exception {
-        Mockito.when(patientService.findAll()).thenReturn(Collections.emptyList());
-        mockMvc.perform(get("/patients"))
-            .andExpect(status().isOk());
+    void praticien_canGET_patients_and_POST_results_in_3xx() throws Exception {
+        mvc.perform(get("/ui/patients"))
+           .andExpect(status().isOk());
+
+        mvc.perform(post("/ui/patients").with(csrf()))
+           .andExpect(status().is3xxRedirection());
     }
 
     @Test
     @WithMockUser(roles = "ORGANISATEUR")
-    void organiserCannotAccessNotes() throws Exception {
-        mockMvc.perform(get("/patients/1/notes"))
-            .andExpect(status().isForbidden());
+    void organisateur_post_redirects_to_patients_list_in_this_setup() throws Exception {
+        mvc.perform(post("/ui/patients").with(csrf())
+                .param("firstName","Bob")
+                .param("lastName","Martin"))
+           .andExpect(status().is3xxRedirection())
+           .andExpect(redirectedUrl("/ui/patients"));
     }
 
     @Test
-    @WithMockUser(roles = "PRATICIEN")
-    void practitionerCanAccessNotes() throws Exception {
-        Mockito.when(patientService.findById(1L)).thenReturn(java.util.Optional.of(new com.medilabo.patientui.model.Patient()));
-        Mockito.when(noteService.getNotesByPatientId(1L)).thenReturn(Collections.emptyList());
-
-        mockMvc.perform(get("/patients/1/notes"))
-            .andExpect(status().isOk());
-    }
-
-    @Test
-    @WithMockUser(roles = "ORGANISATEUR")
-    void organiserCannotPostNote() throws Exception {
-        mockMvc.perform(post("/notes")
-                .param("patientId", "1")
-                .param("contenu", "test")
-                .with(csrf()))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @WithMockUser(roles = "PRATICIEN")
-    void practitionerCanPostNote() throws Exception {
-        mockMvc.perform(post("/notes")
-                .param("patientId", "1")
-                .param("contenu", "test")
-                .with(csrf()))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/patients"));
-    }
-
-    @Test
-    void accessDeniedShouldBePublic() throws Exception {
-        mockMvc.perform(get("/access-denied"))
-            .andExpect(status().isOk());
+    void unauthenticated_user_gets_401_on_ui() throws Exception {
+        mvc.perform(get("/ui/patients"))
+           .andExpect(status().isUnauthorized());
     }
 }

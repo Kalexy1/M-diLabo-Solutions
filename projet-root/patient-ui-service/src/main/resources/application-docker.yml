@@ -5,16 +5,16 @@ spring:
   application:
     name: patient-ui-service
   thymeleaf:
-    cache: false
+    cache: true
 
-# Secret JWT identique à gateway & auth (dev)
-JWT_SECRET: change-me-change-me-change-me-change-me
+# Secret identique à auth-service & gateway (passe-le via env dans compose)
+JWT_SECRET: ${JWT_SECRET}
 
-# Base URL de la gateway (local)
+# En Docker, on vise le nom du service gateway
 gateway:
-  base-url: http://localhost:8080
+  base-url: http://gateway-service:8080
 
-# Chemins d’API exposés derrière la gateway (⚠️ avec /api)
+# Chemins DERRIÈRE la gateway (avec /api)
 patients:
   api:
     base: /api/patients

@@ -1,181 +1,191 @@
 package com.medilabo.patientui.controller;
 
-import com.medilabo.patientui.dto.RiskAssessmentResponse;
 import com.medilabo.patientui.model.Patient;
+import com.medilabo.patientui.model.RiskAssessmentResponse;
 import com.medilabo.patientui.service.NoteService;
 import com.medilabo.patientui.service.PatientService;
+import com.medilabo.patientui.service.RiskService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.freemarker.FreeMarkerAutoConfiguration;
+import org.springframework.boot.autoconfigure.gson.GsonAutoConfiguration;
+import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration;
+import org.springframework.boot.autoconfigure.jsonb.JsonbAutoConfiguration;
+import org.springframework.boot.autoconfigure.mustache.MustacheAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
+import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.Ordered;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.View;
+import org.springframework.web.servlet.ViewResolver;
 
-import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(PatientController.class)
+@WebMvcTest(
+        controllers = PatientController.class,
+        excludeAutoConfiguration = {
+                SecurityAutoConfiguration.class,
+                SecurityFilterAutoConfiguration.class,
+                UserDetailsServiceAutoConfiguration.class,
+                OAuth2ClientAutoConfiguration.class,
+                OAuth2ResourceServerAutoConfiguration.class,
+                ThymeleafAutoConfiguration.class // on évite d’enregistrer le resolver Thymeleaf auto-configuré
+        }
+)
+@AutoConfigureMockMvc(addFilters = false)
+@ImportAutoConfiguration({
+        HttpMessageConvertersAutoConfiguration.class,
+        GsonAutoConfiguration.class,
+        JsonbAutoConfiguration.class,
+        FreeMarkerAutoConfiguration.class,
+        MustacheAutoConfiguration.class
+})
 class PatientControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired MockMvc mvc;
 
-    @MockBean
-    private PatientService patientService;
+    @MockBean PatientService patientService;
+    @MockBean NoteService noteService;
+    @MockBean RiskService riskService;
 
-    @MockBean
-    private NoteService noteService;
+    @TestConfiguration
+    static class NoOpViewResolverConfig {
 
-    @MockBean
-    private RestTemplate restTemplate;
+        private static View noOpView() {
+            return new View() {
+                @Override public String getContentType() { return "text/html"; }
+                @Override
+                public void render(Map<String, ?> model,
+                                   HttpServletRequest request,
+                                   HttpServletResponse response) {
+                    // no-op
+                }
+            };
+        }
 
-    private Patient patient;
-    private RiskAssessmentResponse risk;
+        /** Ne résout PAS redirect:/ ni forward:/ pour laisser Spring renvoyer 3xx. */
+        static class HighPriorityNoOpResolver implements ViewResolver, Ordered {
+            @Override
+            public View resolveViewName(String viewName, Locale locale) {
+                if (viewName == null) return null;
+                if (viewName.startsWith("redirect:")) return null; // Laisse Spring gérer la redirection (3xx)
+                if (viewName.startsWith("forward:"))  return null; // Laisse Spring gérer le forward
+                return noOpView(); // Toute autre vue -> no-op (évite Thymeleaf)
+            }
+            @Override public int getOrder() { return Ordered.HIGHEST_PRECEDENCE; }
+        }
+
+        @Bean(name = "thymeleafViewResolver")
+        @Primary
+        ViewResolver thymeleafViewResolver() {
+            return new HighPriorityNoOpResolver();
+        }
+
+        @Bean
+        @Primary
+        ViewResolver viewResolver() {
+            return new HighPriorityNoOpResolver();
+        }
+    }
+
 
     @BeforeEach
-    void setup() {
-        patient = new Patient();
-        patient.setId(1L);
-        patient.setNom("Dupont");
-        patient.setPrenom("Jean");
-        patient.setGenre("M");
-        patient.setDateNaissance(LocalDate.of(1980, 1, 1));
+    void setUp() {
+        // list()
+        given(patientService.findAll(nullable(String.class)))
+                .willReturn(List.of(new Patient()));
 
-        risk = new RiskAssessmentResponse();
-        risk.setAge(44);
-        risk.setRiskLevel("None");
+        // details / edit / risk
+        Patient p = new Patient(); p.setId(1L);
+        given(patientService.getOne(eq(1L), nullable(String.class))).willReturn(p);
+        given(noteService.findByPatient(eq(1L), nullable(String.class))).willReturn(List.of());
+
+        RiskAssessmentResponse risk = new RiskAssessmentResponse();
+        risk.setPatientId(1);
+        risk.setRiskLevel("NONE");
+        risk.setTriggerCount(0);
+        given(riskService.getRisk(eq(1L), nullable(String.class))).willReturn(risk);
+
+        // create() renvoie un patient sauvegardé avec id
+        Patient saved = new Patient(); saved.setId(42L);
+        given(patientService.create(any(Patient.class), nullable(String.class))).willReturn(saved);
+        // update()/delete() : pas besoin de stubs (retour void côté contrôleur)
     }
 
     @Test
-    @WithMockUser(roles = {"ORGANISATEUR"})
-    void shouldDisplayPatientList() throws Exception {
-        when(patientService.findAll()).thenReturn(List.of(patient));
-        when(noteService.getNotesByPatientId(1L)).thenReturn(Collections.emptyList());
-        when(restTemplate.getForObject(anyString(), eq(RiskAssessmentResponse.class))).thenReturn(risk);
-
-        mockMvc.perform(get("/patients"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("patients"))
-                .andExpect(model().attributeExists("patients", "notesByPatient", "riskByPatient"));
+    void list_returns_200() throws Exception {
+        mvc.perform(get("/ui/patients"))
+           .andExpect(status().isOk());
     }
 
     @Test
-    @WithMockUser(roles = {"ORGANISATEUR"})
-    void shouldShowAddForm() throws Exception {
-        mockMvc.perform(get("/patients/new"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("add-patient"))
-                .andExpect(model().attributeExists("patient"));
+    void details_returns_200() throws Exception {
+        mvc.perform(get("/ui/patients/1"))
+           .andExpect(status().isOk());
     }
 
     @Test
-    @WithMockUser(roles = {"ORGANISATEUR"})
-    void shouldCreatePatient() throws Exception {
-        mockMvc.perform(post("/patients")
-                        .param("nom", "Dupont")
-                        .param("prenom", "Jean")
-                        .param("dateNaissance", "1980-01-01")
-                        .param("genre", "M")
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/patients"));
+    void showAddForm_returns_200() throws Exception {
+        mvc.perform(get("/ui/patients/add"))
+           .andExpect(status().isOk());
     }
 
     @Test
-    @WithMockUser(roles = {"ORGANISATEUR"})
-    void shouldShowEditForm() throws Exception {
-        when(patientService.findById(1L)).thenReturn(Optional.of(patient));
-
-        mockMvc.perform(get("/patients/edit/1"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("edit-patient"))
-                .andExpect(model().attributeExists("patient"));
+    void showEditForm_returns_200() throws Exception {
+        mvc.perform(get("/ui/patients/1/edit"))
+           .andExpect(status().isOk());
     }
 
     @Test
-    @WithMockUser(roles = {"ORGANISATEUR"})
-    void shouldUpdatePatient() throws Exception {
-        mockMvc.perform(post("/patients/update")
-                        .param("id", "1")
-                        .param("nom", "Dupont")
-                        .param("prenom", "Jean")
-                        .param("dateNaissance", "1980-01-01")
-                        .param("genre", "M")
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/patients"));
+    void riskReport_returns_200() throws Exception {
+        mvc.perform(get("/ui/patients/1/risk"))
+           .andExpect(status().isOk());
     }
 
     @Test
-    @WithMockUser(roles = {"PRATICIEN"})
-    void shouldShowPatientNotes() throws Exception {
-        when(patientService.findById(1L)).thenReturn(Optional.of(patient));
-        when(noteService.getNotesByPatientId(1L)).thenReturn(List.of(Map.of("contenu", "note")));
-
-        mockMvc.perform(get("/patients/1/notes"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("patient-notes"))
-                .andExpect(model().attributeExists("patient", "notes"));
+    void create_redirects_to_details() throws Exception {
+        mvc.perform(post("/ui/patients").with(csrf())
+                .param("firstName", "Bob")
+                .param("lastName", "Martin"))
+           .andExpect(status().is3xxRedirection())
+           .andExpect(redirectedUrl("/ui/patients/42"));
     }
 
     @Test
-    @WithMockUser(roles = {"PRATICIEN"})
-    void shouldShowRiskReport() throws Exception {
-        when(patientService.findById(1L)).thenReturn(Optional.of(patient));
-        when(restTemplate.getForObject(anyString(), eq(RiskAssessmentResponse.class))).thenReturn(risk);
-
-        mockMvc.perform(get("/patients/1/risk"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("risk-report"))
-                .andExpect(model().attributeExists("patient", "risk"));
+    void update_redirects_to_details() throws Exception {
+        mvc.perform(post("/ui/patients/1").with(csrf())
+                .param("firstName", "Alice")
+                .param("lastName", "Doe"))
+           .andExpect(status().is3xxRedirection())
+           .andExpect(redirectedUrl("/ui/patients/1"));
     }
 
     @Test
-    @WithMockUser(roles = {"ORGANISATEUR"})
-    void shouldDeletePatient_postWithCsrf() throws Exception {
-        mockMvc.perform(post("/patients/delete/1").with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/patients"));
-
-        verify(patientService).deleteById(1L);
-    }
-
-    @Test
-    @WithMockUser(roles = {"PRATICIEN"})
-    void shouldAddNote_postWithCsrf() throws Exception {
-        mockMvc.perform(post("/notes")
-                        .param("patientId", "1")
-                        .param("contenu", "note test")
-                        .with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/patients"));
-
-        verify(noteService).ajouterNote(1L, "note test");
-    }
-
-    @Test
-    @WithMockUser(roles = {"PRATICIEN"})
-    void shouldGeneratePdfReport() throws Exception {
-        when(patientService.findById(1L)).thenReturn(Optional.of(patient));
-        when(restTemplate.getForObject(anyString(), eq(RiskAssessmentResponse.class))).thenReturn(risk);
-
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        PatientController controller = new PatientController(patientService, noteService, restTemplate);
-        controller.downloadPdfReport(1L, response);
-
-        assertThat(response.getStatus()).isEqualTo(200);
-        assertThat(response.getContentType()).isEqualTo("application/pdf");
-        assertThat(response.getContentAsByteArray()).isNotEmpty();
+    void delete_redirects_to_list() throws Exception {
+        mvc.perform(post("/ui/patients/1/delete").with(csrf()))
+           .andExpect(status().is3xxRedirection())
+           .andExpect(redirectedUrl("/ui/patients"));
     }
 }

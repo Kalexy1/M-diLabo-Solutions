@@ -1,90 +1,54 @@
 package com.medilabo.patientui.model;
 
+import java.time.Instant;
+
 /**
- * Application: com.medilabo.patientui.model
- * <p>
- * Classe <strong>Note</strong>.
- * <br/>
- * Rôle : Représente une note médicale associée à un patient dans le
- * microservice <em>patient-ui-service</em>.
- * </p>
- * <p>
- * Cette classe n’est pas une entité persistée localement : elle sert
- * uniquement de modèle pour afficher dans l’UI les données
- * récupérées depuis le microservice <em>note-service</em>.
- * </p>
+ * DTO for notes, aligned with the note-service model.
  */
 public class Note {
-
-    /**
-     * Identifiant unique de la note (généré par MongoDB
-     * côté microservice note-service).
-     */
-    private String id;
-
-    /**
-     * Identifiant du patient auquel la note est associée.
-     */
+    private Long id;
     private Long patientId;
+    private String content;
+    private Instant createdAt;
+    private Instant updatedAt;
 
-    /**
-     * Contenu textuel de la note médicale.
-     */
-    private String contenu;
-
-    // --- Getters et setters ---
-
-    /**
-     * Retourne l’identifiant unique de la note.
-     *
-     * @return identifiant de la note
-     */
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    /**
-     * Définit l’identifiant unique de la note.
-     *
-     * @param id identifiant de la note
-     */
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
-    /**
-     * Retourne l’identifiant du patient associé à la note.
-     *
-     * @return identifiant du patient
-     */
     public Long getPatientId() {
         return patientId;
     }
 
-    /**
-     * Définit l’identifiant du patient associé à la note.
-     *
-     * @param patientId identifiant du patient
-     */
     public void setPatientId(Long patientId) {
         this.patientId = patientId;
     }
 
-    /**
-     * Retourne le contenu textuel de la note.
-     *
-     * @return contenu de la note
-     */
-    public String getContenu() {
-        return contenu;
+    public String getContent() {
+        return content;
     }
 
-    /**
-     * Définit le contenu textuel de la note.
-     *
-     * @param contenu contenu de la note
-     */
-    public void setContenu(String contenu) {
-        this.contenu = contenu;
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

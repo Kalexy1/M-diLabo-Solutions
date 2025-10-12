@@ -1,27 +1,29 @@
 package com.medilabo.patientui.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 /**
- * Classe de configuration de l'application Patient UI Service.
- * <p>
- * Déclare les beans nécessaires, notamment le {@link RestTemplate} pour effectuer
- * des appels HTTP vers d'autres microservices.
- * </p>
+ * Fournit des WebClient préconfigurés vers la Gateway.
+ * L’ajout du header Authorization se fait au niveau des services (en récupérant le JWT du cookie).
  */
 @Configuration
 public class AppConfig {
 
-    /**
-     * Déclare un bean {@link RestTemplate} pour permettre la communication avec les microservices
-     * comme patient-service, note-service ou risk-assessment-service.
-     *
-     * @return une instance de {@link RestTemplate}
-     */
     @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
+    public WebClient patientApiClient(@Value("${PATIENT_API_BASE_URL}") String baseUrl) {
+        return WebClient.builder().baseUrl(baseUrl).build();
+    }
+
+    @Bean
+    public WebClient noteApiClient(@Value("${NOTE_API_BASE_URL}") String baseUrl) {
+        return WebClient.builder().baseUrl(baseUrl).build();
+    }
+
+    @Bean
+    public WebClient riskApiClient(@Value("${RISK_API_BASE_URL}") String baseUrl) {
+        return WebClient.builder().baseUrl(baseUrl).build();
     }
 }

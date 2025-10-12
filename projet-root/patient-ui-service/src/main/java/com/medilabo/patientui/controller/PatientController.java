@@ -1,260 +1,121 @@
 package com.medilabo.patientui.controller;
 
-import com.medilabo.patientui.dto.RiskAssessmentResponse;
 import com.medilabo.patientui.model.Patient;
 import com.medilabo.patientui.service.NoteService;
 import com.medilabo.patientui.service.PatientService;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Paragraph;
-import com.itextpdf.text.pdf.PdfWriter;
-import jakarta.servlet.http.HttpServletResponse;
+import com.medilabo.patientui.service.RiskService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import static com.medilabo.patientui.web.JwtCookieUtil.extractJwt;
 
-/**
- * Application: com.medilabo.patientui.controller
- * <p>
- * Classe <strong>PatientController</strong>.
- * <br/>
- * Rôle : Gère les vues Thymeleaf de l’UI patient (liste, création, édition, notes, rapport PDF).
- * </p>
- * <p>
- * Sécurité & CSRF :
- * <ul>
- *   <li>Consultations en <b>GET</b> (liste, formulaires, notes, rapports) : aucun effet de bord.</li>
- *   <li>Actions d’écriture en <b>POST</b> (création, mise à jour, suppression, ajout de note) :
- *       protégées par <b>CSRF</b> via les formulaires.</li>
- *   <li>La suppression est exposée en <b>POST</b> pour respecter la sémantique HTTP et bénéficier de la protection CSRF.</li>
- * </ul>
- * </p>
- */
 @Controller
+@RequestMapping("/ui/patients")
 public class PatientController {
 
-    private final PatientService patientService;
-    private final NoteService noteService;
-    private final RestTemplate restTemplate;
+    private final PatientService patients;
+    private final NoteService notes;
+    private final RiskService risk;
 
-    /** URL de base vers le gateway-service (appel des autres microservices via Gateway). */
-    private static final String GATEWAY_BASE_URL = "http://gateway-service:8080";
-
-    /**
-     * Injection des dépendances.
-     *
-     * @param patientService service de gestion des patients (UI ↔ backend patient-service)
-     * @param noteService    service d’accès aux notes (UI ↔ note-service)
-     * @param restTemplate   client HTTP pour interroger le risk-service via la Gateway
-     */
-    public PatientController(PatientService patientService, NoteService noteService, RestTemplate restTemplate) {
-        this.patientService = patientService;
-        this.noteService = noteService;
-        this.restTemplate = restTemplate;
+    public PatientController(PatientService patients, NoteService notes, RiskService risk) {
+        this.patients = patients;
+        this.notes = notes;
+        this.risk = risk;
     }
 
-    /**
-     * Affiche la liste des patients, enrichie de leurs notes et de leur niveau de risque.
-     *
-     * @param model modèle Thymeleaf
-     * @return vue {@code patients}
-     */
-    @GetMapping("/patients")
-    @PreAuthorize("hasAnyRole('ORGANISATEUR', 'PRATICIEN')")
-    public String getAllPatients(Model model) {
-        List<Patient> patients = patientService.findAll();
-        Map<Long, List<Map<String, Object>>> notesByPatient = new HashMap<>();
-        Map<Long, String> riskByPatient = new HashMap<>();
-
-        for (Patient p : patients) {
-            notesByPatient.put(p.getId(), noteService.getNotesByPatientId(p.getId()));
-            try {
-                RiskAssessmentResponse risk = restTemplate.getForObject(
-                        GATEWAY_BASE_URL + "/risk/" + p.getId(),
-                        RiskAssessmentResponse.class
-                );
-                riskByPatient.put(p.getId(), risk != null ? risk.getRiskLevel() : "Non disponible");
-            } catch (Exception e) {
-                riskByPatient.put(p.getId(), "Non disponible");
-            }
-        }
-
-        model.addAttribute("patients", patients);
-        model.addAttribute("notesByPatient", notesByPatient);
-        model.addAttribute("riskByPatient", riskByPatient);
-        return "patients";
-    }
-
-    /**
-     * Affiche le formulaire d’ajout d’un patient.
-     *
-     * @param model modèle Thymeleaf
-     * @return vue {@code add-patient}
-     */
-    @GetMapping("/patients/new")
-    @PreAuthorize("hasRole('ORGANISATEUR')")
-    public String showAddPatientForm(Model model) {
-        model.addAttribute("patient", new Patient());
-        return "add-patient";
-    }
-
-    /**
-     * Crée un nouveau patient (POST protégé par CSRF).
-     *
-     * @param patient patient à créer
-     * @return redirection vers {@code /patients}
-     */
-    @PostMapping("/patients")
-    @PreAuthorize("hasRole('ORGANISATEUR')")
-    public String createPatient(@ModelAttribute Patient patient) {
-        patientService.save(patient);
-        return "redirect:/patients";
-    }
-
-    /**
-     * Ajoute une note pour un patient (POST protégé par CSRF).
-     *
-     * @param patientId identifiant du patient
-     * @param contenu   contenu de la note
-     * @return redirection vers {@code /patients}
-     */
-    @PostMapping("/notes")
-    @PreAuthorize("hasRole('PRATICIEN')")
-    public String ajouterNote(@RequestParam("patientId") Long patientId,
-                              @RequestParam("contenu") String contenu) {
-        noteService.ajouterNote(patientId, contenu);
-        return "redirect:/patients";
-    }
-
-    /**
-     * Affiche le formulaire d’édition d’un patient.
-     *
-     * @param id    identifiant du patient
-     * @param model modèle Thymeleaf
-     * @return vue {@code edit-patient} ou redirection vers {@code /patients} si non trouvé
-     */
-    @GetMapping("/patients/edit/{id}")
-    @PreAuthorize("hasRole('ORGANISATEUR')")
-    public String showEditForm(@PathVariable Long id, Model model) {
+    private String jwtOrNull(HttpServletRequest req) {
         try {
-            Patient patient = patientService.findById(id)
-                    .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
-            model.addAttribute("patient", patient);
-            return "edit-patient";
-        } catch (IllegalArgumentException e) {
-            return "redirect:/patients";
+            return extractJwt(req, "JWT_TOKEN");
+        } catch (Exception ignored) {
+            return null;
         }
     }
 
-    /**
-     * Met à jour les informations d’un patient (POST protégé par CSRF).
-     *
-     * @param patient patient mis à jour (l’ID doit être renseigné)
-     * @return redirection vers {@code /patients}
-     */
-    @PostMapping("/patients/update")
+    // ---- Liste des patients ----
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ORGANISATEUR','PRATICIEN')")
+    public String list(Model model, HttpServletRequest req) {
+        String jwt = jwtOrNull(req);
+        model.addAttribute("patients", patients.findAll(jwt));
+        return "patients"; // templates/patients.html
+    }
+
+    // ---- Détails d’un patient + notes + risque ----
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ORGANISATEUR','PRATICIEN')")
+    public String details(@PathVariable Long id, Model model, HttpServletRequest req) {
+        String jwt = jwtOrNull(req);
+        var p = patients.getOne(id, jwt);
+        var n = notes.findByPatient(id, jwt);
+        var r = risk.getRisk(id, jwt);
+
+        model.addAttribute("patient", p);
+        model.addAttribute("notes", n);
+        model.addAttribute("risk", r);
+        return "patient-notes"; // templates/patient-notes.html
+    }
+
+    // ---- Formulaire d’ajout ----
+    @GetMapping("/add")
     @PreAuthorize("hasRole('ORGANISATEUR')")
-    public String updatePatient(@ModelAttribute Patient patient) {
-        patientService.save(patient);
-        return "redirect:/patients";
+    public String showAddForm(Model model) {
+        model.addAttribute("patient", new Patient());
+        return "add-patient"; // templates/add-patient.html
     }
 
-    /**
-     * Affiche l’historique des notes d’un patient.
-     *
-     * @param id    identifiant du patient
-     * @param model modèle Thymeleaf
-     * @return vue {@code patient-notes}
-     */
-    @GetMapping("/patients/{id}/notes")
-    @PreAuthorize("hasRole('PRATICIEN')")
-    public String showPatientNotes(@PathVariable Long id, Model model) {
-        Patient patient = patientService.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
-        List<Map<String, Object>> notes = noteService.getNotesByPatientId(id);
-        model.addAttribute("patient", patient);
-        model.addAttribute("notes", notes);
-        return "patient-notes";
-    }
-
-    /**
-     * Affiche le rapport de risque d’un patient.
-     *
-     * @param id    identifiant du patient
-     * @param model modèle Thymeleaf
-     * @return vue {@code risk-report}
-     */
-    @GetMapping("/patients/{id}/risk")
-    @PreAuthorize("hasRole('PRATICIEN')")
-    public String showRiskReport(@PathVariable Long id, Model model) {
-        Patient patient = patientService.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
-        RiskAssessmentResponse risk = restTemplate.getForObject(
-                GATEWAY_BASE_URL + "/risk/" + id,
-                RiskAssessmentResponse.class
-        );
-        model.addAttribute("patient", patient);
-        model.addAttribute("risk", risk);
-        return "risk-report";
-    }
-
-    /**
-     * Supprime un patient (POST protégé par CSRF).
-     *
-     * @param id identifiant du patient à supprimer
-     * @return redirection vers {@code /patients}
-     */
-    @PostMapping("/patients/delete/{id}")
+    // ---- Création du patient ----
+    @PostMapping
     @PreAuthorize("hasRole('ORGANISATEUR')")
-    public String deletePatient(@PathVariable Long id) {
-        patientService.deleteById(id);
-        return "redirect:/patients";
+    public String create(@ModelAttribute Patient payload, HttpServletRequest req) {
+        String jwt = jwtOrNull(req);
+        var saved = patients.create(payload, jwt);
+        Long id = (saved != null) ? saved.getId() : null;
+        return (id != null)
+                ? "redirect:/ui/patients/" + id
+                : "redirect:/ui/patients";
     }
 
-    /**
-     * Génère et télécharge le rapport PDF du risque d’un patient.
-     *
-     * @param id       identifiant du patient
-     * @param response réponse HTTP (flux sortant du PDF)
-     * @throws IOException       en cas d’erreur d’écriture de la réponse
-     * @throws DocumentException en cas d’erreur iText lors de la génération du PDF
-     */
-    @GetMapping("/patients/{id}/report/pdf")
-    @PreAuthorize("hasRole('PRATICIEN')")
-    public void downloadPdfReport(@PathVariable Long id, HttpServletResponse response)
-            throws IOException, DocumentException {
-        Patient patient = patientService.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Patient non trouvé : " + id));
-        RiskAssessmentResponse risk = restTemplate.getForObject(
-                GATEWAY_BASE_URL + "/risk/" + id,
-                RiskAssessmentResponse.class
-        );
+    // ---- Formulaire de modification ----
+    @GetMapping("/{id}/edit")
+    @PreAuthorize("hasRole('ORGANISATEUR')")
+    public String showEditForm(@PathVariable Long id, Model model, HttpServletRequest req) {
+        String jwt = jwtOrNull(req);
+        var patient = patients.getOne(id, jwt);
+        model.addAttribute("patient", patient);
+        return "edit-patient"; // templates/edit-patient.html
+    }
 
-        response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=rapport_patient_" + id + ".pdf");
+    // ---- Mise à jour du patient ----
+    @PostMapping("/{id}")
+    @PreAuthorize("hasRole('ORGANISATEUR')")
+    public String update(@PathVariable Long id, @ModelAttribute Patient payload, HttpServletRequest req) {
+        String jwt = jwtOrNull(req);
+        patients.update(id, payload, jwt);
+        return "redirect:/ui/patients/" + id;
+    }
 
-        Document document = new Document();
-        PdfWriter.getInstance(document, response.getOutputStream());
-        document.open();
-        document.add(new Paragraph("Rapport de risque de diabète"));
-        document.add(new Paragraph(" "));
-        document.add(new Paragraph("Nom : " + patient.getNom()));
-        document.add(new Paragraph("Prénom : " + patient.getPrenom()));
-        document.add(new Paragraph("Date de naissance : " + patient.getDateNaissance()));
-        document.add(new Paragraph("Genre : " + patient.getGenre()));
-        if (risk != null) {
-            document.add(new Paragraph("Âge : " + risk.getAge()));
-            document.add(new Paragraph("Risque détecté : " + risk.getRiskLevel()));
-        } else {
-            document.add(new Paragraph("Risque détecté : Non disponible"));
-        }
-        document.close();
+    // ---- Suppression du patient ----
+    @PostMapping("/{id}/delete")
+    @PreAuthorize("hasRole('ORGANISATEUR')")
+    public String delete(@PathVariable Long id, HttpServletRequest req) {
+        String jwt = jwtOrNull(req);
+        patients.delete(id, jwt);
+        return "redirect:/ui/patients";
+    }
+
+    // ---- Page d’évaluation du risque ----
+    @GetMapping("/{id}/risk")
+    @PreAuthorize("hasAnyRole('ORGANISATEUR','PRATICIEN')")
+    public String riskReport(@PathVariable Long id, Model model, HttpServletRequest req) {
+        String jwt = jwtOrNull(req);
+        var patient = patients.getOne(id, jwt);
+        var riskLevel = risk.getRisk(id, jwt);
+
+        model.addAttribute("patient", patient);
+        model.addAttribute("riskLevel", riskLevel);
+        return "risk-report"; // templates/risk-report.html
     }
 }
