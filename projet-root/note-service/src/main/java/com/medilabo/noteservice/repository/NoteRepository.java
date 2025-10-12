@@ -6,23 +6,13 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.List;
 
 /**
- * Application: com.medilabo.noteservice.repository
- * <p>
- * Interface <strong>NoteRepository</strong>.
- * <br/>
- * Rôle : Fournit les opérations CRUD et les requêtes spécifiques sur les notes.
- * </p>
- * <p>
- * Hérite de {@link MongoRepository} pour l'accès à MongoDB.
- * </p>
+ * Interface NoteRepository : CRUD + requêtes spécifiques sur les notes.
  */
-public interface NoteRepository extends MongoRepository<Note, String> {
+public interface NoteRepository extends MongoRepository<Note, Long> {
 
     /**
-     * Recherche toutes les notes associées à un patient en fonction de son identifiant.
-     *
-     * @param patientId l'identifiant du patient
-     * @return une liste de {@link Note} associées à ce patient
+     * Recherche toutes les notes d'un patient.
+     * @param patientId identifiant du patient (Long)
      */
-    List<Note> findByPatientId(Integer patientId);
+    List<Note> findByPatientId(Long patientId);
 }

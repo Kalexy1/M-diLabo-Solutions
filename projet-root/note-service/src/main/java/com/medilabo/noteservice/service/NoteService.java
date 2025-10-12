@@ -2,60 +2,43 @@ package com.medilabo.noteservice.service;
 
 import com.medilabo.noteservice.model.Note;
 import com.medilabo.noteservice.repository.NoteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
-/**
- * Application: com.medilabo.noteservice.service
- * <p>
- * Classe <strong>NoteService</strong>.
- * <br/>
- * Rôle : Service métier pour gérer les notes médicales des patients.
- * </p>
- */
 @Service
 public class NoteService {
+    private final NoteRepository repo;
 
-    @Autowired
-    private NoteRepository noteRepository;
-
-    /**
-     * Constructeur permettant l'injection du repository.
-     *
-     * @param noteRepository repository des notes
-     */
-    public NoteService(NoteRepository noteRepository) {
-        this.noteRepository = noteRepository;
+    public NoteService(NoteRepository repo) {
+        this.repo = repo;
     }
 
-    /**
-     * Récupère toutes les notes associées à un patient donné.
-     *
-     * @param patientId l'identifiant du patient
-     * @return la liste des notes du patient
-     */
-    public List<Note> getNotesByPatientId(Integer patientId) {
-        return noteRepository.findByPatientId(patientId);
+    public List<Note> findByPatientId(Long patientId) {
+        return repo.findByPatientId(patientId);
     }
 
-    /**
-     * Ajoute une nouvelle note pour un patient.
-     *
-     * @param note la note à ajouter
-     * @return la note enregistrée
-     */
-    public Note addNote(Note note) {
-        return noteRepository.save(note);
+    public Note getById(Long id) {
+        return repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Note introuvable: " + id));
     }
 
-    /**
-     * Supprime une note par son identifiant.
-     *
-     * @param id l'identifiant de la note à supprimer
-     */
-    public void deleteNoteById(String id) {
-        noteRepository.deleteById(id);
+    public Note save(Note n) {
+        var now = Instant.now();
+        n.setCreatedAt(now);
+        n.setUpdatedAt(now);
+        return repo.save(n);
+    }
+
+    public Note update(Note n) {
+        var existing = getById(n.getId());
+        existing.setContent(n.getContent());
+        existing.setUpdatedAt(Instant.now());
+        return repo.save(existing);
+    }
+
+    public void delete(Long id) {
+        repo.deleteById(id);
     }
 }
