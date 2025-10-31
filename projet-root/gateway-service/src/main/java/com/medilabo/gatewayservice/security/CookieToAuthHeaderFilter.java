@@ -1,7 +1,6 @@
 package com.medilabo.gatewayservice.security;
 
 import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
@@ -19,46 +18,37 @@ import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 /**
- * Filtre WebFlux qui recopie un JWT stocké dans un cookie HTTP-only
- * vers l'en-tête {@code Authorization: Bearer <token>} lorsqu'il est présent.
+ * Filtre WebFlux responsable de copier le token JWT stocké dans un cookie HTTP-only
+ * vers l'en-tête {@code Authorization: Bearer <token>} si nécessaire.
  * <p>
- * Le filtre s'applique avec la plus haute priorité, ignore les routes publiques,
- * ne modifie pas les requêtes préflight CORS et n'écrase jamais un en-tête
- * {@code Authorization} déjà défini.
- * </p>
+ * Le filtre :
+ * <ul>
+ *   <li>Ignore les routes publiques et d'authentification.</li>
+ *   <li>Laisse passer les requêtes préflight CORS (OPTIONS).</li>
+ *   <li>Ne remplace pas un en-tête Authorization déjà existant.</li>
+ *   <li>Injecte l'en-tête Authorization à partir du cookie JWT s'il est présent.</li>
+ * </ul>
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CookieToAuthHeaderFilter implements WebFilter {
 
     private static final Logger log = LoggerFactory.getLogger(CookieToAuthHeaderFilter.class);
-
-    /**
-     * Motifs d'URL publiques pour lesquelles aucune injection d'en-tête n'est effectuée.
-     */
     private static final List<String> PUBLIC_PATTERNS = List.of(
-        "/auth/**",
+        "/auth/**", "/ui/**",
         "/login", "/register", "/logout",
         "/favicon.ico", "/error",
         "/css/**", "/js/**", "/images/**", "/assets/**",
         "/ui/css/**", "/ui/js/**", "/ui/images/**",
         "/actuator/**"
     );
-
-    /**
-     * Nom du cookie contenant le JWT.
-     */
     private static final String JWT_COOKIE = "JWT_TOKEN";
-
-    /**
-     * Utilitaire de correspondance de chemins avec motifs Ant.
-     */
     private final AntPathMatcher matcher = new AntPathMatcher();
 
     /**
-     * Indique si un chemin correspond à l'une des routes publiques.
+     * Vérifie si le chemin correspond à une route publique.
      *
-     * @param path le chemin de la requête
+     * @param path chemin de la requête
      * @return {@code true} si le chemin est public, sinon {@code false}
      */
     private boolean isPublic(String path) {
@@ -69,23 +59,23 @@ public class CookieToAuthHeaderFilter implements WebFilter {
     }
 
     /**
-     * Applique la logique d'injection de l'en-tête {@code Authorization} à partir du cookie JWT.
-     * <ul>
-     *   <li>Autorise sans modification les requêtes {@code OPTIONS} (préflight CORS).</li>
-     *   <li>N'agit pas sur les routes publiques.</li>
-     *   <li>Ne remplace pas un en-tête {@code Authorization} existant.</li>
-     *   <li>Si un cookie JWT est présent et non vide, injecte l'en-tête {@code Authorization} de type Bearer.</li>
-     *   <li>À défaut, laisse la chaîne de filtres décider (pouvant mener à 401/303 selon la configuration).</li>
-     * </ul>
+     * Filtre qui ajoute l'en-tête Authorization à partir du cookie JWT.
      *
-     * @param exchange l'échange serveur web
-     * @param chain    la chaîne des filtres Web
-     * @return un {@link Mono} représentant la poursuite du traitement
+     * @param exchange l'échange WebFlux
+     * @param chain la chaîne de filtres
+     * @return un {@link Mono} indiquant la poursuite du traitement
      */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         var req = exchange.getRequest();
         var path = req.getURI().getPath();
+
+        if (path.startsWith("/auth/")
+            || "/login".equals(path)
+            || "/register".equals(path)
+            || "/logout".equals(path)) {
+            return chain.filter(exchange);
+        }
 
         if (req.getMethod() == HttpMethod.OPTIONS) {
             return chain.filter(exchange);
@@ -102,18 +92,15 @@ public class CookieToAuthHeaderFilter implements WebFilter {
         MultiValueMap<String, HttpCookie> cookies = req.getCookies();
         HttpCookie jwtCookie = cookies.getFirst(JWT_COOKIE);
         if (jwtCookie != null) {
-            String raw = jwtCookie.getValue();
-            if (raw != null) {
-                String token = raw.trim();
-                if (!token.isEmpty()) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("Inject Authorization from cookie for path {}", path);
-                    }
-                    ServerHttpRequest mutated = req.mutate()
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                        .build();
-                    return chain.filter(exchange.mutate().request(mutated).build());
+            String token = jwtCookie.getValue();
+            if (token != null && !token.isBlank()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Inject Authorization from cookie for path {}", path);
                 }
+                ServerHttpRequest mutated = req.mutate()
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token.trim())
+                    .build();
+                return chain.filter(exchange.mutate().request(mutated).build());
             }
         }
 

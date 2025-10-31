@@ -29,25 +29,19 @@ class SecurityConfigWebFluxTest {
     WebTestClient webTestClient;
 
     @Test
-    void whenNoJwt_onUi_then200_noRedirect() {
+    void whenNoJwt_onUi_then401() {
         webTestClient.get()
             .uri("/ui/patients/list")
             .exchange()
-            .expectStatus().isOk()
-            .expectHeader().doesNotExist(HttpHeaders.LOCATION)
-            .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_PLAIN);
+            .expectStatus().isUnauthorized();
     }
 
     @Test
-    void whenRoleInsufficient_onApiNotes_thenGatewayDoesNotEnforceRoles() {
-        String dummyToken = "header.payload.signature";
+    void whenNoJwt_onApiNotes_then401() {
         webTestClient.get()
             .uri("/api/notes/all")
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + dummyToken)
             .exchange()
-            .expectStatus().isOk()
-            .expectHeader().doesNotExist(HttpHeaders.LOCATION)
-            .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_PLAIN);
+            .expectStatus().isUnauthorized();
     }
 
     @Test
@@ -55,18 +49,26 @@ class SecurityConfigWebFluxTest {
         webTestClient.get()
             .uri("/auth/login")
             .exchange()
-            .expectStatus().isOk();
+            .expectStatus().isOk()
+            .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_PLAIN);
     }
 
     @Test
-    void preservesAuthorizationHeader() {
+    void wellKnown_isProtected_byDefault() {
+        webTestClient.get()
+            .uri("/.well-known/appspecific/com.chrome.devtools.json")
+            .exchange()
+            .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void preservesAuthorizationHeader_butStillRequiresValidAuth() {
         String token = "Bearer SOME_TOKEN";
         webTestClient.get()
             .uri("/api/notes/all")
             .header(HttpHeaders.AUTHORIZATION, token)
             .exchange()
-            .expectStatus().isOk()
-            .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_PLAIN);
+            .expectStatus().isUnauthorized();
     }
 
     static class TestRoutes {
@@ -77,7 +79,9 @@ class SecurityConfigWebFluxTest {
                 .andRoute(GET("/api/notes/all"),
                           req -> ServerResponse.ok().contentType(MediaType.TEXT_PLAIN).bodyValue("API OK"))
                 .andRoute(GET("/auth/login"),
-                          req -> ServerResponse.ok().contentType(MediaType.TEXT_PLAIN).bodyValue("LOGIN PAGE"));
+                          req -> ServerResponse.ok().contentType(MediaType.TEXT_PLAIN).bodyValue("LOGIN PAGE"))
+                .andRoute(GET("/.well-known/appspecific/com.chrome.devtools.json"),
+                          req -> ServerResponse.ok().contentType(MediaType.TEXT_PLAIN).bodyValue("WELL KNOWN"));
         }
     }
 }
