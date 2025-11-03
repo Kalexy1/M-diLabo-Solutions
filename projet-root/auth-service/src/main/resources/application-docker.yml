@@ -1,20 +1,76 @@
 server:
   port: ${SERVER_PORT:8085}
+  forward-headers-strategy: framework
+
 spring:
   application:
     name: auth-service
+  thymeleaf:
+    # true en conteneur pour de meilleures perfs (mets à false en local si besoin)
+    cache: ${THYMELEAF_CACHE:true}
+
+  # Base MySQL (réseau Docker) — surchargée par les env du compose
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/authdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin.01234}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    open-in-view: false
     properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+      # Hibernate 6 déduit le dialecte ; on force juste le fuseau
+      hibernate.jdbc.time_zone: UTC
+
+# ==============================
+# JWT (utilisé pour signer les tokens)
+# ==============================
+# -> On lit les variables d'env standard (JWT_SECRET, JWT_TTL_SECONDS, etc.)
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# Pour compat avec un éventuel @Value("${JWT_SECRET}") dans le code :
+JWT_SECRET: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:43200}
+
+# ==============================
+# UI / redirections (via Gateway en Docker)
+# ==============================
+ui:
+  base-url: ${UI_BASE_URL:http://gateway-service:8080}
+
+# ==============================
+# Cookie JWT émis par l'auth-service
+# ==============================
+security:
+  jwt:
+    cookie:
+      name: ${SECURITY_JWT_COOKIE_NAME:JWT_TOKEN}
+      secure: ${SECURITY_JWT_COOKIE_SECURE:false}
+      same-site: ${SECURITY_JWT_COOKIE_SAMESITE:Lax}
+      ttl-seconds: ${SECURITY_JWT_TTL_SECONDS:43200}
+
+# ==============================
+# Actuator
+# ==============================
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# ==============================
+# Logging
+# ==============================
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    com.medilabo.authservice: DEBUG
