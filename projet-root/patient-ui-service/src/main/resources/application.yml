@@ -1,38 +1,81 @@
 server:
   port: 8084
+  forward-headers-strategy: framework  # redirections correctes derrière proxy
 
 spring:
   application:
     name: patient-ui-service
   thymeleaf:
-    cache: false
+    cache: false  # dev (mets true en prod)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
+      - org.springframework.boot.autoconfigure.sql.init.SqlInitializationAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
 
-# Secret JWT identique à auth/patient/note/risk
+# =====================================
+# JWT (identique partout)
+# =====================================
 jwt:
-  secret: ${JWT_SECRET:change-me-change-me-change-me-change-me}
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
 
-# Base URL de la gateway (local)
+# =====================================
+# Base URL de la Gateway
+# - Local: http://localhost:8080
+# - Docker: injecte GATEWAY_BASE_URL=http://gateway-service:8080
+# =====================================
 gateway:
-  base-url: http://localhost:8080
+  base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
 
-# Chemins d’API exposés derrière la gateway (avec /api)
+# =====================================
+# APIs derrière la Gateway
+# - *.api.base : chemin (stable)
+# - *.api.url  : URL complète. Si *_BASE_URL est fourni, on l’utilise;
+#                sinon on compose gateway.base-url + *.api.base
+# =====================================
 patients:
   api:
-    base: /api/patients
+    base: ${PATIENT_API_BASE:/api/patients}
+    url: ${PATIENT_API_BASE_URL:${gateway.base-url}${patients.api.base}}
+
 notes:
   api:
-    base: /api/notes
+    base: ${NOTE_API_BASE:/api/notes}
+    url: ${NOTE_API_BASE_URL:${gateway.base-url}${notes.api.base}}
+
 risk:
   api:
-    base: /api/risk
+    base: ${RISK_API_BASE:/api/risk}
+    url: ${RISK_API_BASE_URL:${gateway.base-url}${risk.api.base}}
 
+auth:
+  api:
+    base: ${AUTH_API_BASE:/auth}
+    url: ${AUTH_API_BASE_URL:${gateway.base-url}${auth.api.base}}
+
+# =====================================
+# Actuator
+# =====================================
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: always
 
+# =====================================
+# Logging
+# =====================================
 logging:
   level:
     org.springframework.security: INFO
-    com.medilabo.patientui: INFO
+    org.springframework.web: INFO
+    com.medilabo.patientui: DEBUG
