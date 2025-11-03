@@ -7,6 +7,7 @@ spring:
     name: gateway-service
   main:
     web-application-type: reactive
+
   cloud:
     gateway:
       default-filters:
@@ -17,13 +18,13 @@ spring:
 
       routes:
         # =======================
-        # FRONT / UI
+        # UI (Front)
         # =======================
         - id: patient-ui
           uri: http://localhost:8084
           predicates:
             - Path=/ui/**
-          filters: []   # ne pas enlever /ui
+          filters: []
 
         - id: ui-root
           uri: http://localhost:8084
@@ -41,7 +42,6 @@ spring:
             - Path=/auth/**
           filters:
             - RemoveRequestHeader=Authorization
-            - StripPrefix=0
 
         - id: login-to-auth
           uri: http://localhost:8085
@@ -51,7 +51,6 @@ spring:
             - SetPath=/auth/login
             - RemoveRequestHeader=Authorization
 
-        # NEW: /logout (compat) -> /auth/logout
         - id: logout-to-auth
           uri: http://localhost:8085
           predicates:
@@ -61,29 +60,26 @@ spring:
             - RemoveRequestHeader=Authorization
 
         # =======================
-        # APIs (Option B : validation dans chaque MS)
+        # APIs (Back)
         # =======================
         - id: patient-api
           uri: http://localhost:8081
           predicates:
             - Path=/api/patients/**
-          filters:
-            - StripPrefix=0
 
         - id: note-api
           uri: http://localhost:8082
           predicates:
             - Path=/api/notes/**
-          filters:
-            - StripPrefix=0
 
         - id: risk-api
           uri: http://localhost:8083
           predicates:
             - Path=/api/risk/**
-          filters:
-            - StripPrefix=0
 
+      # =======================
+      # Global CORS configuration
+      # =======================
       globalcors:
         add-to-simple-url-handler-mapping: true
         corsConfigurations:
@@ -91,15 +87,38 @@ spring:
             allowedOrigins:
               - http://localhost:8080
               - http://localhost:8084
+              - http://localhost:8085
             allowedMethods: "*"
             allowedHeaders: "*"
             allowCredentials: true
 
+# =======================
+# JWT Configuration
+# =======================
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# =======================
+# Actuator (pour health/info)
+# =======================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# =======================
+# Logging
+# =======================
 logging:
   level:
     org.springframework.cloud.gateway: INFO
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
     reactor.netty.http.client: WARN
-
-jwt:
-  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+    com.medilabo.gatewayservice: DEBUG

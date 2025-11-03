@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   forward-headers-strategy: framework
 
 spring:
@@ -16,73 +16,108 @@ spring:
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin RETAIN_FIRST
 
       routes:
-        # ---------- UI ----------
+        # =======================
+        # UI (Front-end)
+        # =======================
         - id: patient-ui
           uri: http://patient-ui-service:8084
-          predicates: [ Path=/ui/** ]
-          filters: []     # ne pas enlever /ui
+          predicates:
+            - Path=/ui/**
+          filters: []
 
-        # Racine -> UI
         - id: ui-root
           uri: http://patient-ui-service:8084
-          predicates: [ Path=/ ]
-          filters: [ SetPath=/ ]
+          predicates:
+            - Path=/
+          filters:
+            - SetPath=/
 
-        # ---------- AUTH ----------
+        # =======================
+        # AUTH
+        # =======================
         - id: auth-service
           uri: http://auth-service:8085
-          predicates: [ Path=/auth/** ]
+          predicates:
+            - Path=/auth/**
           filters:
             - RemoveRequestHeader=Authorization
-            - StripPrefix=0
 
         - id: login-to-auth
           uri: http://auth-service:8085
-          predicates: [ Path=/login ]
+          predicates:
+            - Path=/login
           filters:
             - SetPath=/auth/login
             - RemoveRequestHeader=Authorization
 
-        # NEW: /logout (compat) -> /auth/logout
         - id: logout-to-auth
           uri: http://auth-service:8085
-          predicates: [ Path=/logout ]
+          predicates:
+            - Path=/logout
           filters:
             - SetPath=/auth/logout
             - RemoveRequestHeader=Authorization
 
-        # ---------- APIs (Option B : validation dans chaque MS) ----------
+        # =======================
+        # APIs
+        # =======================
         - id: patient-api
           uri: http://patient-service:8081
-          predicates: [ Path=/api/patients/** ]
-          filters: [ StripPrefix=0 ]
+          predicates:
+            - Path=/api/patients/**
 
         - id: note-api
           uri: http://note-service:8082
-          predicates: [ Path=/api/notes/** ]
-          filters: [ StripPrefix=0 ]
+          predicates:
+            - Path=/api/notes/**
 
         - id: risk-api
           uri: http://risk-assessment-service:8083
-          predicates: [ Path=/api/risk/** ]
-          filters: [ StripPrefix=0 ]
+          predicates:
+            - Path=/api/risk/**
 
+      # =======================
+      # Global CORS configuration
+      # =======================
       globalcors:
         add-to-simple-url-handler-mapping: true
         corsConfigurations:
           '[/**]':
             allowedOrigins:
-              - http://localhost:8080
-              - http://localhost:8084
+              - http://gateway-service:8080
+              - http://patient-ui-service:8084
+              - http://auth-service:8085
             allowedMethods: "*"
             allowedHeaders: "*"
             allowCredentials: true
 
+# =======================
+# JWT Configuration
+# =======================
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# =======================
+# Logging
+# =======================
 logging:
   level:
     org.springframework.cloud.gateway: INFO
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
     reactor.netty.http.client: WARN
+    com.medilabo.gatewayservice: DEBUG
 
-jwt:
-  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+# =======================
+# Actuator for health checks
+# =======================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

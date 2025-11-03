@@ -65,12 +65,16 @@ public class SecurityConfig {
 
             // Optionnel : clarifier 401 vs 403 pour le debug
             .exceptionHandling(e -> e
-                .authenticationEntryPoint((swe, ex) ->
-                    swe.getResponse().setStatusCode(org.springframework.http.HttpStatus.UNAUTHORIZED))
-                .accessDeniedHandler((swe, ex) ->
-                    swe.getResponse().setStatusCode(org.springframework.http.HttpStatus.FORBIDDEN))
-            )
+            	    .authenticationEntryPoint((swe, ex) -> {
+            	        swe.getResponse().setStatusCode(org.springframework.http.HttpStatus.UNAUTHORIZED);
+            	        return swe.getResponse().setComplete();
+            	    })
+            	    .accessDeniedHandler((swe, ex) -> {
+            	        swe.getResponse().setStatusCode(org.springframework.http.HttpStatus.FORBIDDEN);
+            	        return swe.getResponse().setComplete();
+            	    })
+            	)
+
             .build();
     }
 }
-

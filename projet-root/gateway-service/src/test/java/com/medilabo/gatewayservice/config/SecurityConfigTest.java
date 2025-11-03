@@ -21,9 +21,9 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 })
 @Import({
     com.medilabo.gatewayservice.config.SecurityConfig.class,
-    SecurityConfigWebFluxTest.TestRoutes.class
+    SecurityConfigTest.TestRoutes.class
 })
-class SecurityConfigWebFluxTest {
+class SecurityConfigTest {
 
     @Autowired
     WebTestClient webTestClient;
@@ -54,11 +54,12 @@ class SecurityConfigWebFluxTest {
     }
 
     @Test
-    void wellKnown_isProtected_byDefault() {
+    void wellKnown_isPublic_whenPermitted() {
         webTestClient.get()
             .uri("/.well-known/appspecific/com.chrome.devtools.json")
             .exchange()
-            .expectStatus().isUnauthorized();
+            .expectStatus().isOk()
+            .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_PLAIN);
     }
 
     @Test
