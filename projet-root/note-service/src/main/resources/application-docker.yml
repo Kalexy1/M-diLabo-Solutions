@@ -1,7 +1,42 @@
-spring:
-  data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongo-db:27017/notesdb}
-
 server:
   port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: note-service
+
+  data:
+    mongodb:
+      # ✅ Connexion au conteneur Mongo (même nom que dans docker-compose.yml)
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongo-db:27017/notesdb}
+
+# ==============================
+# JWT partagé avec tout l’écosystème
+# ==============================
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# ==============================
+# Actuator (monitoring et health checks)
+# ==============================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# ==============================
+# Logging (pour surveillance et debug)
+# ==============================
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.data.mongodb: INFO
+    org.springframework.web: INFO
+    com.medilabo.noteservice: DEBUG
