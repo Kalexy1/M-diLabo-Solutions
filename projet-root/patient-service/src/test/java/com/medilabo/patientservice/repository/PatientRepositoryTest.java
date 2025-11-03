@@ -24,7 +24,7 @@ class PatientRepositoryTest {
         Patient saved = repository.save(p);
 
         assertThat(repository.findById(saved.getId())).isPresent();
-        assertThat(repository.findById(saved.getId()).get().getNom()).isEqualTo("Doe");
+        assertThat(repository.findById(saved.getId()).get().getLastName()).isEqualTo("Doe");
     }
 
     @Test
