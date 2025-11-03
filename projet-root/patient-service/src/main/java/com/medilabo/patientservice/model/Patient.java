@@ -68,7 +68,20 @@ public class Patient {
      */
     private String phone;
 
-    /**
+    public Patient(String firstName, String lastName, LocalDate birthDate, String gender, String address, String phone) {
+		this.firstName=firstName;
+		this.lastName=lastName;
+		this.birthDate=birthDate;
+		this.gender=gender;
+		this.address=address;
+		this.phone=phone;
+	}
+
+	public Patient() {
+		// TODO Auto-generated constructor stub
+	}
+
+	/**
      * Retourne l’identifiant unique du patient.
      *
      * @return l’identifiant du patient

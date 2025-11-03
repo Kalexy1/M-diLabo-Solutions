@@ -15,25 +15,25 @@ logging:
     com.medilabo.riskassessment: DEBUG
 
 # ==============================
-#   URLs des autres microservices
+#   URLs des microservices (mode local)
 # ==============================
 patients:
   api:
-    base: ${PATIENT_API_BASE_URL:http://gateway-service:8080/api/patients}
+    base: ${PATIENT_API_BASE_URL:http://localhost:8080/api/patients}
 
 notes:
   api:
-    base: ${NOTE_API_BASE_URL:http://gateway-service:8080/api/notes}
+    base: ${NOTE_API_BASE_URL:http://localhost:8080/api/notes}
 
 risk:
   api:
-    base: ${RISK_API_BASE_URL:http://gateway-service:8080/api/risk}
+    base: ${RISK_API_BASE_URL:http://localhost:8080/api/risk}
 
 # ==============================
-#   JWT (Token partagé entre services)
+#   JWT (Secret partagé)
 # ==============================
 jwt:
-  secret: ${JWT_SECRET:p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1}
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
   issuer: ${JWT_ISSUER:medilabo-auth}
   audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
   ttl-seconds: ${JWT_TTL_SECONDS:43200}

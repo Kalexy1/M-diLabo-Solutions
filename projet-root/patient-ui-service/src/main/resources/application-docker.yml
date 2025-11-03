@@ -1,38 +1,67 @@
 server:
-  port: 8084
+  port: ${SERVER_PORT:8084}
+  forward-headers-strategy: framework
 
 spring:
   application:
     name: patient-ui-service
   thymeleaf:
-    cache: true
+    # true = perf en conteneur ; passe à false uniquement en dev local
+    cache: ${THYMELEAF_CACHE:true}
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
+      - org.springframework.boot.autoconfigure.sql.init.SqlInitializationAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
 
-# Secret JWT partagé (transmis via variable d'environnement JWT_SECRET)
+# ==============================
+# JWT (identique dans tout l'écosystème)
+# ==============================
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
 
-# En Docker, on vise le nom du service gateway
+# ==============================
+# Gateway (DNS Docker)
+# ==============================
 gateway:
-  base-url: http://gateway-service:8080
+  base-url: ${GATEWAY_BASE_URL:http://gateway-service:8080}
 
-# Chemins d’API exposés derrière la gateway
+# ==============================
+# Chemins d'API derrière la Gateway
+# ==============================
 patients:
   api:
-    base: /api/patients
+    base: ${PATIENT_API_BASE_PATH:/api/patients}
 notes:
   api:
-    base: /api/notes
+    base: ${NOTE_API_BASE_PATH:/api/notes}
 risk:
   api:
-    base: /api/risk
+    base: ${RISK_API_BASE_PATH:/api/risk}
 
+# ==============================
+# Actuator
+# ==============================
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: always
 
+# ==============================
+# Logging
+# ==============================
 logging:
   level:
     org.springframework.security: INFO
+    org.springframework.web: INFO
     com.medilabo.patientui: INFO

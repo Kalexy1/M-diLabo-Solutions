@@ -1,22 +1,42 @@
-spring:
-  data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/notesdb}
-
 server:
   port: ${SERVER_PORT:8082}
 
-jwt:
-  # Secret partagé avec auth-service, gateway, patient-service, risk-assessment-service, patient-ui-service
-  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+spring:
+  application:
+    name: note-service
 
+  data:
+    mongodb:
+      # Connexion MongoDB locale par défaut
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/notesdb}
+
+# ==============================
+# JWT partagé avec tout l’écosystème
+# ==============================
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# ==============================
+# Actuator (pour le monitoring)
+# ==============================
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: always
 
+# ==============================
+# Logging (pour le debug)
+# ==============================
 logging:
   level:
     org.springframework.security: INFO
-    com.medilabo.noteservice: INFO
+    org.springframework.data.mongodb: INFO
+    com.medilabo.noteservice: DEBUG
+    org.springframework.web: INFO

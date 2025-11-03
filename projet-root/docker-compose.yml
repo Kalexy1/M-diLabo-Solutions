@@ -1,4 +1,15 @@
+version: "3.9"
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  mongo-data:
+
 services:
+  # -------------------- DATABASES --------------------
   mysql:
     image: mysql:8
     container_name: mysql-db
@@ -6,7 +17,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: admin.01234
     ports:
-      - "3306:3306"
+      - "3307:3306" # évite le conflit sur 3306 host
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d
@@ -18,7 +29,7 @@ services:
     networks: [backend]
 
   mongo:
-    image: mongo:5.0
+    image: mongo:7
     container_name: mongo-db
     restart: always
     ports:
@@ -32,16 +43,20 @@ services:
       retries: 10
     networks: [backend]
 
+  # -------------------- SERVICES --------------------
   auth-service:
     build:
       context: ./auth-service
+      dockerfile: Dockerfile
     container_name: auth-service
+    restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8085
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/authdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: admin.01234
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
       JWT_TTL_SECONDS: "43200"
       JWT_ISSUER: medilabo-auth
@@ -61,13 +76,16 @@ services:
   patient-service:
     build:
       context: ./patient-service
+      dockerfile: Dockerfile
     container_name: patient-service
+    restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8081
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/patientdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: admin.01234
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
     depends_on:
       mysql:
@@ -79,7 +97,9 @@ services:
   note-service:
     build:
       context: ./note-service
+      dockerfile: Dockerfile
     container_name: note-service
+    restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8082
@@ -95,16 +115,21 @@ services:
   risk-assessment-service:
     build:
       context: ./risk-assessment-service
+      dockerfile: Dockerfile
     container_name: risk-assessment-service
+    restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8083
+      # Appels via la gateway
       PATIENT_API_BASE_URL: http://gateway-service:8080/api/patients
-      NOTE_API_BASE_URL: http://gateway-service:8080/api/notes
+      NOTE_API_BASE_URL:    http://gateway-service:8080/api/notes
       JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
     depends_on:
-      - patient-service
-      - note-service
+      patient-service:
+        condition: service_started
+      note-service:
+        condition: service_started
     ports:
       - "8083:8083"
     networks: [backend]
@@ -112,16 +137,21 @@ services:
   patient-ui-service:
     build:
       context: ./patient-ui-service
+      dockerfile: Dockerfile
     container_name: patient-ui-service
+    restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8084
-      GATEWAY_BASE_URL: http://gateway-service:8080
+      GATEWAY_BASE_URL:  http://gateway-service:8080
+      # IMPORTANT : fournir des *URL* complètes attendues par AppConfig
       PATIENT_API_BASE_URL: http://gateway-service:8080/api/patients
-      NOTE_API_BASE_URL: http://gateway-service:8080/api/notes
-      RISK_API_BASE_URL: http://gateway-service:8080/api/risk
-      AUTH_API_BASE_URL: http://gateway-service:8080/auth
+      NOTE_API_BASE_URL:    http://gateway-service:8080/api/notes
+      RISK_API_BASE_URL:    http://gateway-service:8080/api/risk
       JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
+    depends_on:
+      gateway-service:
+        condition: service_started
     ports:
       - "8084:8084"
     networks: [backend]
@@ -129,25 +159,22 @@ services:
   gateway-service:
     build:
       context: ./gateway-service
+      dockerfile: Dockerfile
     container_name: gateway-service
+    restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8080
       JWT_SECRET: p9_6Y7QpA2mZb4RkC7tU1nV9xJ3sL8wE5hT2yG6qM1rD4fP8uK0cN5bV2zX7aL1
     depends_on:
-      - auth-service
-      - patient-service
-      - note-service
-      - risk-assessment-service
-      - patient-ui-service
+      auth-service:
+        condition: service_started
+      patient-service:
+        condition: service_started
+      note-service:
+        condition: service_started
+      risk-assessment-service:
+        condition: service_started
     ports:
       - "8080:8080"
     networks: [backend]
-
-networks:
-  backend:
-    driver: bridge
-
-volumes:
-  mysql-data:
-  mongo-data:
