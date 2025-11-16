@@ -43,7 +43,6 @@ public class RiskAssessmentController {
      * @param patientId l’identifiant du patient
      * @return une {@link ResponseEntity} contenant le résultat du calcul du risque
      */
-    @PreAuthorize("hasRole('PRATICIEN')")
     @GetMapping(path = "/{patientId}")
     public ResponseEntity<RiskAssessmentResponse> getRisk(@PathVariable Long patientId) {
         return ResponseEntity.ok(riskService.assessRiskDetailed(patientId));

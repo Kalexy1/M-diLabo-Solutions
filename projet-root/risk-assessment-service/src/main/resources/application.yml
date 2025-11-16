@@ -1,7 +1,6 @@
 spring:
   application:
     name: risk-assessment-service
-
   main:
     web-application-type: servlet
 
@@ -9,28 +8,33 @@ server:
   port: ${SERVER_PORT:8083}
   forward-headers-strategy: framework
 
-logging:
-  level:
-    org.springframework.security: INFO
-    com.medilabo.riskassessment: DEBUG
+# ==============================
+# Base URL de la Gateway en local
+# ==============================
+gateway:
+  base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
 
 # ==============================
-#   URLs des microservices (mode local)
+# APIs derrière la Gateway (local)
 # ==============================
 patients:
   api:
-    base: ${PATIENT_API_BASE_URL:http://localhost:8080/api/patients}
+    base: ${PATIENT_API_BASE:/api/patients}
+    url: ${PATIENT_API_BASE_URL:${gateway.base-url}${patients.api.base}}
 
 notes:
   api:
-    base: ${NOTE_API_BASE_URL:http://localhost:8080/api/notes}
+    base: ${NOTE_API_BASE:/api/notes}
+    url: ${NOTE_API_BASE_URL:${gateway.base-url}${notes.api.base}}
 
+# (facultatif) si ton service expose aussi /api/risk
 risk:
   api:
-    base: ${RISK_API_BASE_URL:http://localhost:8080/api/risk}
+    base: ${RISK_API_BASE:/api/risk}
+    url: ${RISK_API_BASE_URL:${gateway.base-url}${risk.api.base}}
 
 # ==============================
-#   JWT (Secret partagé)
+# JWT partagé
 # ==============================
 jwt:
   secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
@@ -38,8 +42,13 @@ jwt:
   audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
   ttl-seconds: ${JWT_TTL_SECONDS:43200}
 
+# ✅ Pour SecurityConfig (@Value("${security.jwt.secret}"))
+security:
+  jwt:
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+
 # ==============================
-#   Gestion et surveillance
+# Actuator
 # ==============================
 management:
   endpoints:
@@ -49,3 +58,12 @@ management:
   endpoint:
     health:
       show-details: always
+
+# ==============================
+# Logging
+# ==============================
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    com.medilabo.riskassessment: DEBUG
