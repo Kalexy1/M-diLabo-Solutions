@@ -61,7 +61,6 @@ public class NoteController {
      * @param id l’identifiant de la note
      * @return la note correspondante
      */
-    @PreAuthorize("hasRole('PRATICIEN')")
     @GetMapping("/{id}")
     public Note getOne(@PathVariable Long id) {
         return service.getById(id);
@@ -74,7 +73,6 @@ public class NoteController {
      * @param payload   la note à créer
      * @return la note nouvellement créée
      */
-    @PreAuthorize("hasRole('PRATICIEN')")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/patient/{patientId}")
     public Note create(@PathVariable Long patientId, @RequestBody Note payload) {
@@ -90,7 +88,6 @@ public class NoteController {
      * @param payload les nouvelles données de la note
      * @return la note mise à jour
      */
-    @PreAuthorize("hasRole('PRATICIEN')")
     @PutMapping("/{id}")
     public Note update(@PathVariable Long id, @RequestBody Note payload) {
         payload.setId(id);
@@ -102,7 +99,6 @@ public class NoteController {
      *
      * @param id l’identifiant de la note à supprimer
      */
-    @PreAuthorize("hasRole('PRATICIEN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {

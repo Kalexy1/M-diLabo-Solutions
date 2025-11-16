@@ -1,10 +1,15 @@
-JWT_SECRET: test-secret
-
 spring:
-  data:
-    mongodb:
-      host: localhost
-      port: 27017
-      database: test
+  main:
+    allow-bean-definition-overriding: true
 
-logging.level.org.mongodb: WARN
+logging:
+  level:
+    org.mongodb: WARN
+    org.springframework.data.mongodb: INFO
+    com.medilabo.noteservice: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
