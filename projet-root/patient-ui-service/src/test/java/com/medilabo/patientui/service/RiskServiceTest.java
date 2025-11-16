@@ -1,92 +1,97 @@
 package com.medilabo.patientui.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.medilabo.patientui.model.RiskAssessmentResponse;
+import com.medilabo.patientui.web.JwtCookieUtil;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.web.reactive.function.client.*;
-
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
-import java.nio.charset.StandardCharsets;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.DefaultUriBuilderFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 class RiskServiceTest {
 
-    private ExchangeFunction exchange;
-    private WebClient webClient;
-    private RiskService service;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private RestTemplate restTemplate;
+    private MockRestServiceServer server;
+    private RiskService riskService;
 
     @BeforeEach
     void setUp() {
-        exchange = mock(ExchangeFunction.class);
-        webClient = WebClient.builder().exchangeFunction(exchange).build();
-        service = new RiskService(webClient);
+        // RestTemplate configuré comme dans AppConfig : rootUri = base URL de l’API risk
+        restTemplate = new RestTemplate();
+        restTemplate.setUriTemplateHandler(
+                new DefaultUriBuilderFactory("http://example.test/api/risk")
+        );
+
+        server = MockRestServiceServer.bindTo(restTemplate).build();
+
+        // En prod Spring injecte le bean "riskApiClient", ici on passe ce RestTemplate de test
+        riskService = new RiskService(restTemplate);
     }
 
     @Test
-    void getRisk_withJwt_addsBearerHeader_andReturnsBody() throws Exception {
-        RiskAssessmentResponse resp = new RiskAssessmentResponse();
-        resp.setRiskLevel("IN_DANGER");
-        String json = mapper.writeValueAsString(resp);
+    void getRisk_withJwt_addsBearerHeader_andReturnsBody() {
+        String json = """
+            {
+              "riskLevel": "IN_DANGER"
+            }
+            """;
 
-        when(exchange.exchange(any(ClientRequest.class))).thenAnswer(inv -> {
-            ClientRequest req = inv.getArgument(0);
+        // RiskService appelle path "/7" → URL finale = http://example.test/api/risk/7
+        server.expect(once(),
+                      requestTo("http://example.test/api/risk/7"))
+              .andExpect(method(GET))
+              .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer jwt-123"))
+              .andExpect(header(HttpHeaders.COOKIE, JwtCookieUtil.DEFAULT_COOKIE_NAME + "=jwt-123"))
+              .andRespond(withStatus(HttpStatus.OK)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .body(json));
 
-            assertThat(req.url().getPath()).endsWith("/7");
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest();
+        servletRequest.setCookies(new Cookie("JWT_TOKEN", "jwt-123"));
 
-            assertThat(req.headers().getFirst("Authorization")).isEqualTo("Bearer jwt-123");
+        RiskAssessmentResponse out = riskService.getRisk(7L, servletRequest);
 
-            var buf = new DefaultDataBufferFactory().wrap(json.getBytes(StandardCharsets.UTF_8));
-            ClientResponse clientResp = ClientResponse
-                    .create(HttpStatus.OK)
-                    .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                    .body(Flux.just(new DefaultDataBufferFactory().wrap(json.getBytes(StandardCharsets.UTF_8))))
-                    .build();
-            return Mono.just(clientResp);
-        });
-
-        RiskAssessmentResponse out = service.getRisk(7L, "jwt-123");
+        server.verify();
         assertThat(out).isNotNull();
         assertThat(out.getRiskLevel()).isEqualTo("IN_DANGER");
-
-        verify(exchange, times(1)).exchange(any(ClientRequest.class));
-        verifyNoMoreInteractions(exchange);
     }
 
     @Test
-    void getRisk_withoutJwt_sendsEmptyBearer_andReturnsBody() throws Exception {
-        RiskAssessmentResponse resp = new RiskAssessmentResponse();
-        resp.setRiskLevel("LOW");
-        String json = mapper.writeValueAsString(resp);
+    void getRisk_withoutJwt_doesNotSendAuthorization_andReturnsBody() {
+        String json = """
+            {
+              "riskLevel": "LOW"
+            }
+            """;
 
-        when(exchange.exchange(any(ClientRequest.class))).thenAnswer(inv -> {
-            ClientRequest req = inv.getArgument(0);
-            assertThat(req.url().getPath()).endsWith("/42");
-            assertThat(req.headers().getFirst("Authorization")).isEqualTo("Bearer ");
+        // Aucun JWT → pas d'Authorization ni de Cookie JWT_TOKEN
+        server.expect(once(),
+                      requestTo("http://example.test/api/risk/42"))
+              .andExpect(method(GET))
+              .andExpect(headerDoesNotExist(HttpHeaders.AUTHORIZATION))
+              .andExpect(headerDoesNotExist(HttpHeaders.COOKIE))
+              .andRespond(withStatus(HttpStatus.OK)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .body(json));
 
-            var buf = new DefaultDataBufferFactory().wrap(json.getBytes(StandardCharsets.UTF_8));
-            ClientResponse clientResp = ClientResponse
-                    .create(HttpStatus.OK)
-                    .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                    .body(Flux.just(new DefaultDataBufferFactory().wrap(json.getBytes(StandardCharsets.UTF_8))))
-                    .build();
-            return Mono.just(clientResp);
-        });
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest();
+        // pas de cookie JWT_TOKEN
 
-        RiskAssessmentResponse out = service.getRisk(42L, null);
+        RiskAssessmentResponse out = riskService.getRisk(42L, servletRequest);
+
+        server.verify();
         assertThat(out).isNotNull();
         assertThat(out.getRiskLevel()).isEqualTo("LOW");
-
-        verify(exchange, times(1)).exchange(any(ClientRequest.class));
-        verifyNoMoreInteractions(exchange);
     }
 }

@@ -1,105 +1,129 @@
 package com.medilabo.patientui.config;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
-/**
- * Configuration de sécurité du service UI.
- * <p>
- * Les ressources publiques sont en accès libre tandis que les routes sous
- * {@code /ui/**} nécessitent un JWT valide. La protection CSRF est activée
- * pour sécuriser les formulaires.
- * </p>
- */
 @Configuration
-@EnableMethodSecurity
+@EnableWebSecurity
+@Profile("!test")
 public class SecurityConfig {
 
-    /**
-     * Configure la chaîne de filtres Spring Security pour l’UI.
-     * <p>
-     * Active CSRF avec stockage du jeton en cookie, configure CORS, définit
-     * les règles d’autorisation (accès public à certaines routes, authentification
-     * requise pour {@code /ui/**}) et enregistre les redirections en cas d’accès
-     * non authentifié ou refusé.
-     * </p>
-     *
-     * @param http l’instance {@link HttpSecurity} à configurer
-     * @return la {@link SecurityFilterChain} configurée
-     * @throws Exception en cas d’erreur de configuration
-     */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-            .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
-            .cors(Customizer.withDefaults())
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                           JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
+
+        http
+            .csrf(csrf -> csrf.disable())
+            .formLogin(form -> form.disable())
+            .logout(logout -> logout.disable())
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/", "/login", "/auth/login").permitAll()
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
-                .requestMatchers("/ui/access-denied").permitAll()
-                .requestMatchers("/ui/**").authenticated()
-                .anyRequest().denyAll()
+                // ressources statiques éventuelles
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+                .anyRequest().authenticated()
             )
-            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter())))
-            .exceptionHandling(e -> e
-                .authenticationEntryPoint((req, res, ex) -> {
-                    res.setStatus(303);
-                    res.setHeader("Location", "/auth/login");
-                })
-                .accessDeniedHandler((req, res, ex) -> {
-                    res.setStatus(303);
-                    res.setHeader("Location", "/ui/access-denied");
-                })
-            )
-            .build();
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
+            );
+
+        return http.build();
     }
 
     /**
-     * Convertisseur d’authentification JWT qui extrait les rôles depuis le claim
-     * {@code roles} et applique le préfixe {@code ROLE_} attendu par Spring Security.
-     *
-     * @return un {@link Converter} de {@link Jwt} vers {@link AbstractAuthenticationToken}
+     * Décodage du JWT (HS256) basé sur security.jwt.secret
+     * (même secret que dans le gateway).
      */
     @Bean
-    public Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthConverter() {
-        var rolesConv = new JwtGrantedAuthoritiesConverter();
-        rolesConv.setAuthoritiesClaimName("roles");
-        rolesConv.setAuthorityPrefix("ROLE_");
-
-        var conv = new JwtAuthenticationConverter();
-        conv.setJwtGrantedAuthoritiesConverter(rolesConv);
-        return conv;
-    }
-
-    /**
-     * Décodeur JWT HMAC (HS256) basé sur un secret partagé.
-     *
-     * @param secret la clé secrète utilisée pour valider la signature des JWT
-     * @return un {@link JwtDecoder} configuré avec la clé HMAC
-     */
-    @Bean
-    public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
+    public JwtDecoder jwtDecoder(@Value("${security.jwt.secret}") String secret) {
         SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
+    }
+
+    /**
+     * Convertit les claims du JWT en autorités Spring Security.
+     * - claim "roles" : chaîne "ROLE_ROOT,ROLE_ORGANISATEUR"
+     * - éventuellement claim "authorities" : liste ou chaîne
+     */
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(this::extractAuthorities);
+        return converter;
+    }
+
+    private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
+        Set<GrantedAuthority> authorities = new HashSet<>();
+
+        Object rolesClaim = jwt.getClaims().get("roles");
+        if (rolesClaim instanceof String s) {
+            // ex: "ROLE_ROOT,ROLE_ORGANISATEUR"
+            for (String part : s.split(",")) {
+                String role = part.trim();
+                if (!role.isEmpty()) {
+                    // déjà préfixé ROLE_ par le gateway → on laisse tel quel
+                    authorities.add(new SimpleGrantedAuthority(role));
+                }
+            }
+        } else if (rolesClaim instanceof List<?> list) {
+            // au cas où ce serait un tableau JSON ["ORGANISATEUR","PRATICIEN"]
+            for (Object o : list) {
+                if (o != null) {
+                    String role = o.toString().trim();
+                    if (!role.isEmpty()) {
+                        if (!role.startsWith("ROLE_")) {
+                            role = "ROLE_" + role;
+                        }
+                        authorities.add(new SimpleGrantedAuthority(role));
+                    }
+                }
+            }
+        }
+
+        // Optionnel : support d’un claim "authorities"
+        Object authClaim = jwt.getClaims().get("authorities");
+        if (authClaim instanceof String s) {
+            for (String part : s.split(",")) {
+                String val = part.trim();
+                if (val.isEmpty()) continue;
+                if (!val.startsWith("ROLE_")) {
+                    val = "ROLE_" + val;
+                }
+                authorities.add(new SimpleGrantedAuthority(val));
+            }
+        } else if (authClaim instanceof List<?> list) {
+            for (Object o : list) {
+                if (o != null) {
+                    String val = o.toString().trim();
+                    if (val.isEmpty()) continue;
+                    if (!val.startsWith("ROLE_")) {
+                        val = "ROLE_" + val;
+                    }
+                    authorities.add(new SimpleGrantedAuthority(val));
+                }
+            }
+        }
+
+        return authorities;
     }
 }

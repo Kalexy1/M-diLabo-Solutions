@@ -1,80 +1,131 @@
 package com.medilabo.patientui.service;
 
 import com.medilabo.patientui.model.Note;
-import org.springframework.http.HttpHeaders;
+import com.medilabo.patientui.web.JwtCookieUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * Service de gestion des notes médicales côté interface utilisateur.
+ * Service responsable des appels à l’API des notes via la Gateway.
  * <p>
- * Ce service communique avec le microservice <strong>note-service</strong> via la Gateway
- * pour récupérer et créer des notes associées à un patient.
- * Le jeton JWT est transmis dans l’en-tête {@code Authorization} pour l’authentification.
- * </p>
+ * Il utilise un {@link RestTemplate} dédié (bean {@code noteApiClient})
+ * dont l’URL de base est configurée dans {@code application.yml} :
+ * <pre>
+ * notes.api.url: http://gateway-service:8080/api/notes
+ * </pre>
+ * Les chemins utilisés ici sont donc relatifs :
+ * <ul>
+ *   <li>"/patient/{id}"</li>
+ *   <li>etc.</li>
+ * </ul>
  */
 @Service
 public class NoteService {
 
-    /**
-     * Client Web configuré pour communiquer avec le microservice des notes.
-     */
-    private final WebClient noteApiClient;
+    private final RestTemplate apiClient;
 
-    /**
-     * Constructeur du service des notes.
-     *
-     * @param noteApiClient le client Web préconfiguré pour le microservice des notes
-     */
-    public NoteService(WebClient noteApiClient) {
-        this.noteApiClient = noteApiClient;
+    public NoteService(@Qualifier("noteApiClient") RestTemplate apiClient) {
+        this.apiClient = apiClient;
     }
 
     /**
-     * Récupère toutes les notes associées à un patient spécifique.
+     * Construit les en-têtes HTTP avec le JWT (Authorization + Cookie).
      *
-     * @param patientId l’identifiant du patient
-     * @param jwt       le jeton JWT pour l’authentification
-     * @return la liste des notes du patient (liste vide si aucune note trouvée)
+     * @param request requête HTTP source
+     * @return en-têtes configurés
      */
-    public List<Note> findByPatient(Long patientId, String jwt) {
-        Note[] arr = noteApiClient.get()
-                .uri("/patient/{pid}", patientId)
-                .header(HttpHeaders.AUTHORIZATION, bearer(jwt))
-                .retrieve()
-                .bodyToMono(Note[].class)
-                .block();
-        return arr == null ? List.of() : Arrays.asList(arr);
+    private HttpHeaders buildAuthHeaders(HttpServletRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+
+        String jwt = JwtCookieUtil.extractJwt(request);
+        if (jwt != null && !jwt.isBlank()) {
+            headers.setBearerAuth(jwt);
+            headers.add(HttpHeaders.COOKIE, JwtCookieUtil.DEFAULT_COOKIE_NAME + "=" + jwt);
+        }
+
+        return headers;
     }
 
     /**
-     * Crée une nouvelle note pour un patient.
+     * Méthode générique pour appeler l'API des notes.
      *
-     * @param patientId l’identifiant du patient
-     * @param payload   la note à créer
-     * @param jwt       le jeton JWT pour l’authentification
+     * @param path         chemin relatif (ex: "/patient/{id}")
+     * @param method       méthode HTTP
+     * @param body         éventuel corps de requête
+     * @param request      requête HTTP source (pour extraire le JWT)
+     * @param responseType type de la réponse attendue
+     * @param <T>          type générique de retour
+     * @return corps de la réponse désérialisé
+     */
+    private <T> T callApi(String path,
+                          HttpMethod method,
+                          Object body,
+                          HttpServletRequest request,
+                          Class<T> responseType) {
+
+        HttpHeaders headers = buildAuthHeaders(request);
+
+        HttpEntity<?> entity = (body != null)
+                ? new HttpEntity<>(body, headers)
+                : new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<T> response =
+                    apiClient.exchange(path, method, entity, responseType);
+            return response.getBody();
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            throw new IllegalStateException(
+                    "Notes API error " + e.getStatusCode() + " : " + e.getResponseBodyAsString(), e);
+        }
+    }
+
+    // ============================================================
+    //                    MÉTHODES PUBLIQUES
+    // ============================================================
+
+    /**
+     * Récupère la liste des notes pour un patient.
+     *
+     * @param patientId identifiant du patient
+     * @param request   requête HTTP source
+     * @return liste de notes (potentiellement vide)
+     */
+    public List<Note> findByPatient(Long patientId, HttpServletRequest request) {
+        Note[] arr = callApi(
+                "/patient/" + patientId,
+                HttpMethod.GET,
+                null,
+                request,
+                Note[].class
+        );
+        return (arr == null) ? List.of() : Arrays.asList(arr);
+    }
+
+    /**
+     * Crée une nouvelle note pour un patient donné.
+     *
+     * @param patientId identifiant du patient
+     * @param payload   contenu de la note
+     * @param request   requête HTTP source
      * @return la note créée
      */
-    public Note createForPatient(Long patientId, Note payload, String jwt) {
-        return noteApiClient.post()
-                .uri("/patient/{pid}", patientId)
-                .header(HttpHeaders.AUTHORIZATION, bearer(jwt))
-                .bodyValue(payload)
-                .retrieve()
-                .bodyToMono(Note.class)
-                .block();
-    }
-
-    /**
-     * Génère l’en-tête {@code Authorization} au format Bearer.
-     *
-     * @param jwt le jeton JWT à inclure
-     * @return la valeur complète de l’en-tête Authorization
-     */
-    private static String bearer(String jwt) {
-        return "Bearer " + (jwt == null ? "" : jwt);
+    public Note createForPatient(Long patientId, Note payload, HttpServletRequest request) {
+        return callApi(
+                "/patient/" + patientId,
+                HttpMethod.POST,
+                payload,
+                request,
+                Note.class
+        );
     }
 }

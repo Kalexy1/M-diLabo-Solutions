@@ -1,55 +1,33 @@
 package com.medilabo.patientui.controller;
 
+import com.medilabo.patientui.model.Note;
 import com.medilabo.patientui.model.Patient;
+import com.medilabo.patientui.model.RiskAssessmentResponse;
 import com.medilabo.patientui.service.NoteService;
 import com.medilabo.patientui.service.PatientService;
 import com.medilabo.patientui.service.RiskService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import static com.medilabo.patientui.web.JwtCookieUtil.extractJwt;
+import java.util.List;
 
 /**
- * Contrôleur UI pour la gestion des patients côté interface utilisateur.
- * <p>
- * Cette couche appelle les microservices via la Gateway en transmettant le JWT
- * extrait du cookie. Les vues Thymeleaf affichent la liste, le détail, les notes
- * et le niveau de risque des patients. Les règles d'accès sont appliquées par rôle :
- * <ul>
- *     <li>{@code ORGANISATEUR} : création, modification, suppression.</li>
- *     <li>{@code ORGANISATEUR} ou {@code PRATICIEN} : consultation et rapports.</li>
- * </ul>
- * </p>
+ * Contrôleur UI (patient-ui-service).
+ *
+ * IMPORTANT :
+ * - Le Gateway expose /ui/** au navigateur.
+ * - Il supprime /ui avant de proxyfier vers patient-ui.
+ *   Donc ici, les mappings commencent par /patients (sans /ui).
  */
 @Controller
-@RequestMapping("/ui/patients")
 public class PatientController {
 
-    /**
-     * Service de consultation et de gestion des patients (via Gateway).
-     */
     private final PatientService patients;
-
-    /**
-     * Service d'accès aux notes médicales (via Gateway).
-     */
     private final NoteService notes;
-
-    /**
-     * Service d’évaluation du risque de diabète (via Gateway).
-     */
     private final RiskService risk;
 
-    /**
-     * Crée un contrôleur UI des patients.
-     *
-     * @param patients service d'accès aux patients.
-     * @param notes    service d'accès aux notes.
-     * @param risk     service d'évaluation du risque.
-     */
     public PatientController(PatientService patients, NoteService notes, RiskService risk) {
         this.patients = patients;
         this.notes = notes;
@@ -57,150 +35,134 @@ public class PatientController {
     }
 
     /**
-     * Extrait le JWT du cookie de la requête.
-     *
-     * @param req requête HTTP.
-     * @return le jeton JWT ou {@code null} si absent/illisible.
+     * Page d'accueil interne.
+     * Appelée via /ui ou /ui/ côté navigateur, le Gateway enlève /ui et arrive ici sur "/" :
+     * on renvoie directement la liste des patients, sans redirection HTTP.
      */
-    private String jwtOrNull(HttpServletRequest req) {
-        try {
-            return extractJwt(req, "JWT_TOKEN");
-        } catch (Exception ignored) {
-            return null;
-        }
+    @GetMapping({ "", "/" })
+    public String home(Model model, HttpServletRequest request) {
+        return listPatients(model, request);
     }
 
-    /**
-     * Affiche la liste des patients.
-     *
-     * @param model modèle de vue.
-     * @param req   requête HTTP.
-     * @return le nom de la vue de liste.
-     */
-    @GetMapping
-    @PreAuthorize("hasAnyRole('ORGANISATEUR','PRATICIEN')")
-    public String list(Model model, HttpServletRequest req) {
-        String jwt = jwtOrNull(req);
-        model.addAttribute("patients", patients.findAll(jwt));
+    /** Liste des patients (mapping interne : /patients). */
+    @GetMapping("/patients")
+    public String listPatients(Model model, HttpServletRequest request) {
+        List<Patient> all = patients.findAll(request);
+        model.addAttribute("patients", all);
         return "patients";
     }
 
-    /**
-     * Affiche le détail d'un patient, ses notes et son niveau de risque.
-     *
-     * @param id    identifiant du patient.
-     * @param model modèle de vue.
-     * @param req   requête HTTP.
-     * @return le nom de la vue de détail.
-     */
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ORGANISATEUR','PRATICIEN')")
-    public String details(@PathVariable Long id, Model model, HttpServletRequest req) {
-        String jwt = jwtOrNull(req);
-        var p = patients.getOne(id, jwt);
-        var n = notes.findByPatient(id, jwt);
-        var r = risk.getRisk(id, jwt);
-
-        model.addAttribute("patient", p);
-        model.addAttribute("notes", n);
-        model.addAttribute("risk", r);
-        return "patient-notes";
-    }
-
-    /**
-     * Affiche le formulaire de création d'un patient.
-     *
-     * @param model modèle de vue.
-     * @return le nom de la vue d'ajout.
-     */
-    @GetMapping("/add")
-    @PreAuthorize("hasRole('ORGANISATEUR')")
+    /** Formulaire d'ajout (template : add-patient.html). */
+    @GetMapping("/patients/new")
     public String showAddForm(Model model) {
         model.addAttribute("patient", new Patient());
         return "add-patient";
     }
 
     /**
-     * Crée un nouveau patient.
+     * Création d'un nouveau patient.
      *
-     * @param payload données du patient à créer.
-     * @param req     requête HTTP.
-     * @return redirection vers la page de détail ou vers la liste.
+     * IMPORTANT : on ne fait plus de "redirect:/ui/patients" pour éviter
+     * que le navigateur essaie d'appeler directement "patient-ui-service:8084".
+     * On crée, puis on recharge la liste et on renvoie la vue "patients".
      */
-    @PostMapping
-    @PreAuthorize("hasRole('ORGANISATEUR')")
-    public String create(@ModelAttribute Patient payload, HttpServletRequest req) {
-        String jwt = jwtOrNull(req);
-        var saved = patients.create(payload, jwt);
-        Long id = (saved != null) ? saved.getId() : null;
-        return (id != null) ? "redirect:/ui/patients/" + id : "redirect:/ui/patients";
+    @PostMapping("/patients")
+    public String createPatient(@ModelAttribute("patient") Patient payload,
+                                HttpServletRequest request,
+                                Model model) {
+
+        patients.create(payload, request);
+
+        // Recharge la liste et renvoie la même vue que listPatients()
+        List<Patient> all = patients.findAll(request);
+        model.addAttribute("patients", all);
+        return "patients";
     }
 
-    /**
-     * Affiche le formulaire d'édition d'un patient.
-     *
-     * @param id    identifiant du patient.
-     * @param model modèle de vue.
-     * @param req   requête HTTP.
-     * @return le nom de la vue d'édition.
-     */
-    @GetMapping("/{id}/edit")
-    @PreAuthorize("hasRole('ORGANISATEUR')")
-    public String showEditForm(@PathVariable Long id, Model model, HttpServletRequest req) {
-        String jwt = jwtOrNull(req);
-        var patient = patients.getOne(id, jwt);
+    /** Formulaire d'édition (template : edit-patient.html). */
+    @GetMapping("/patients/edit/{id}")
+    public String showEditForm(@PathVariable Long id,
+                               Model model,
+                               HttpServletRequest request) {
+        Patient patient = patients.getOne(id, request);
         model.addAttribute("patient", patient);
         return "edit-patient";
     }
 
     /**
-     * Met à jour un patient existant.
+     * Mise à jour d'un patient.
      *
-     * @param id      identifiant du patient.
-     * @param payload données mises à jour.
-     * @param req     requête HTTP.
-     * @return redirection vers la page de détail.
+     * Le template edit-patient.html envoie son formulaire vers /patients/update
+     * avec un champ hidden "id". On utilise donc cette route, pas /patients/{id}.
+     * Après mise à jour, on renvoie directement la liste.
      */
-    @PostMapping("/{id}")
-    @PreAuthorize("hasRole('ORGANISATEUR')")
-    public String update(@PathVariable Long id, @ModelAttribute Patient payload, HttpServletRequest req) {
-        String jwt = jwtOrNull(req);
-        patients.update(id, payload, jwt);
-        return "redirect:/ui/patients/" + id;
+    @PostMapping("/patients/update")
+    public String updatePatient(@ModelAttribute("patient") Patient payload,
+                                HttpServletRequest request,
+                                Model model) {
+
+        if (payload.getId() != null) {
+            patients.update(payload.getId(), payload, request);
+        }
+
+        List<Patient> all = patients.findAll(request);
+        model.addAttribute("patients", all);
+        return "patients";
     }
 
     /**
-     * Supprime un patient.
+     * Suppression d'un patient.
      *
-     * @param id  identifiant du patient.
-     * @param req requête HTTP.
-     * @return redirection vers la liste des patients.
+     * Le formulaire dans patients.html poste sur /patients/delete/{id}.
+     * Après suppression, on renvoie directement la liste.
      */
-    @PostMapping("/{id}/delete")
-    @PreAuthorize("hasRole('ORGANISATEUR')")
-    public String delete(@PathVariable Long id, HttpServletRequest req) {
-        String jwt = jwtOrNull(req);
-        patients.delete(id, jwt);
-        return "redirect:/ui/patients";
+    @PostMapping("/patients/delete/{id}")
+    public String deletePatient(@PathVariable Long id,
+                                HttpServletRequest request,
+                                Model model) {
+
+        patients.delete(id, request);
+
+        List<Patient> all = patients.findAll(request);
+        model.addAttribute("patients", all);
+        return "patients";
     }
 
     /**
-     * Affiche le rapport d'évaluation du risque pour un patient.
+     * Historique des notes d'un patient.
      *
-     * @param id    identifiant du patient.
-     * @param model modèle de vue.
-     * @param req   requête HTTP.
-     * @return le nom de la vue du rapport de risque.
+     * Appelé depuis patients.html :
+     *   <form th:action="@{'/ui/patients/' + ${p.id} + '/notes'}" method="get">
+     * Le Gateway enlève /ui → ici on reçoit /patients/{id}/notes.
      */
-    @GetMapping("/{id}/risk")
-    @PreAuthorize("hasAnyRole('ORGANISATEUR','PRATICIEN')")
-    public String riskReport(@PathVariable Long id, Model model, HttpServletRequest req) {
-        String jwt = jwtOrNull(req);
-        var patient = patients.getOne(id, jwt);
-        var riskLevel = risk.getRisk(id, jwt);
+    @GetMapping("/patients/{id}/notes")
+    public String showPatientNotes(@PathVariable Long id,
+                                   Model model,
+                                   HttpServletRequest request) {
+        Patient patient = patients.getOne(id, request);
+        List<Note> patientNotes = notes.findByPatient(id, request);
 
         model.addAttribute("patient", patient);
-        model.addAttribute("riskLevel", riskLevel);
+        model.addAttribute("notes", patientNotes);
+        return "patient-notes";
+    }
+
+    /**
+     * Rapport de risque de diabète pour un patient.
+     *
+     * Appelé depuis patients.html :
+     *   <form th:action="@{'/ui/patients/' + ${p.id} + '/risk'}" method="get">
+     * Le Gateway enlève /ui → ici on reçoit /patients/{id}/risk.
+     */
+    @GetMapping("/patients/{id}/risk")
+    public String showRiskReport(@PathVariable Long id,
+                                 Model model,
+                                 HttpServletRequest request) {
+        Patient patient = patients.getOne(id, request);
+        RiskAssessmentResponse riskResponse = risk.getRisk(id, request);
+
+        model.addAttribute("patient", patient);
+        model.addAttribute("risk", riskResponse); // doit s'appeler "risk" pour risk-report.html
         return "risk-report";
     }
 }

@@ -1,126 +1,90 @@
 package com.medilabo.patientui.service;
 
 import com.medilabo.patientui.model.Patient;
-import org.springframework.http.HttpHeaders;
+import com.medilabo.patientui.web.JwtCookieUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Service de gestion des patients côté interface utilisateur.
- * <p>
- * Ce service communique avec le microservice <strong>patient-service</strong>
- * via la Gateway pour exécuter les opérations CRUD sur les patients.
- * Le jeton JWT est transmis dans l’en-tête {@code Authorization} pour
- * assurer l’authentification et la sécurité des requêtes.
- * </p>
- */
 @Service
 public class PatientService {
 
-    /**
-     * Client Web configuré pour communiquer avec le microservice des patients.
-     */
-    private final WebClient patientApiClient;
+    private final RestTemplate apiClient;
 
-    /**
-     * Constructeur du service Patient.
-     *
-     * @param patientApiClient le client Web préconfiguré pour le microservice des patients
-     */
-    public PatientService(WebClient patientApiClient) {
-        this.patientApiClient = patientApiClient;
+    public PatientService(@Qualifier("patientApiClient") RestTemplate apiClient) {
+        this.apiClient = apiClient;
     }
 
-    /**
-     * Récupère la liste de tous les patients.
-     *
-     * @param jwt le jeton JWT pour l’authentification
-     * @return une liste de patients (liste vide si aucun patient trouvé)
-     */
-    public List<Patient> findAll(String jwt) {
-        var spec = patientApiClient.get()
-                .uri("")
-                .header(HttpHeaders.AUTHORIZATION, bearer(jwt));
-        Patient[] arr = spec.retrieve().bodyToMono(Patient[].class).block();
-        return arr == null ? List.of() : Arrays.asList(arr);
+    /** Construit les headers d’authentification */
+    private HttpHeaders buildAuthHeaders(HttpServletRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+
+        String jwt = JwtCookieUtil.extractJwt(request);
+        if (jwt != null && !jwt.isBlank()) {
+            headers.setBearerAuth(jwt);
+            headers.add(HttpHeaders.COOKIE, JwtCookieUtil.DEFAULT_COOKIE_NAME + "=" + jwt);
+        }
+        return headers;
     }
 
-    /**
-     * Récupère un patient par son identifiant.
-     *
-     * @param id  l’identifiant du patient
-     * @param jwt le jeton JWT pour l’authentification
-     * @return le patient correspondant à l’identifiant fourni
-     */
-    public Patient getOne(Long id, String jwt) {
-        return patientApiClient.get()
-                .uri("/{id}", id)
-                .header(HttpHeaders.AUTHORIZATION, bearer(jwt))
-                .retrieve()
-                .bodyToMono(Patient.class)
-                .block();
+    /** Enveloppe générique pour appeler l’API Patients (path relatif au rootUri du RestTemplate) */
+    private <T> T callApi(String path,
+                          HttpMethod method,
+                          Object body,
+                          HttpServletRequest request,
+                          Class<T> type) {
+
+        HttpHeaders headers = buildAuthHeaders(request);
+        HttpEntity<?> entity = (body != null)
+                ? new HttpEntity<>(body, headers)
+                : new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<T> response =
+                    apiClient.exchange(path, method, entity, type);
+            return response.getBody();
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            throw new IllegalStateException(
+                    "Patients API error " + e.getStatusCode() + " : " + e.getResponseBodyAsString(), e);
+        }
     }
 
-    /**
-     * Crée un nouveau patient.
-     *
-     * @param payload les données du patient à créer
-     * @param jwt     le jeton JWT pour l’authentification
-     * @return le patient créé
-     */
-    public Patient create(Patient payload, String jwt) {
-        return patientApiClient.post()
-                .uri("")
-                .header(HttpHeaders.AUTHORIZATION, bearer(jwt))
-                .bodyValue(payload)
-                .retrieve()
-                .bodyToMono(Patient.class)
-                .block();
+    // ============================================================
+    //                    MÉTHODES PUBLIQUES
+    // ============================================================
+
+    /** GET http://gateway-service:8080/api/patients */
+    public List<Patient> findAll(HttpServletRequest request) {
+        Patient[] arr = callApi("", HttpMethod.GET, null, request, Patient[].class);
+        return (arr == null) ? List.of() : Arrays.asList(arr);
     }
 
-    /**
-     * Met à jour un patient existant.
-     *
-     * @param id      l’identifiant du patient à mettre à jour
-     * @param payload les nouvelles données du patient
-     * @param jwt     le jeton JWT pour l’authentification
-     * @return le patient mis à jour
-     */
-    public Patient update(Long id, Patient payload, String jwt) {
-        return patientApiClient.put()
-                .uri("/{id}", id)
-                .header(HttpHeaders.AUTHORIZATION, bearer(jwt))
-                .bodyValue(payload)
-                .retrieve()
-                .bodyToMono(Patient.class)
-                .block();
+    /** GET http://gateway-service:8080/api/patients/{id} */
+    public Patient getOne(Long id, HttpServletRequest request) {
+        return callApi("/" + id, HttpMethod.GET, null, request, Patient.class);
     }
 
-    /**
-     * Supprime un patient à partir de son identifiant.
-     *
-     * @param id  l’identifiant du patient à supprimer
-     * @param jwt le jeton JWT pour l’authentification
-     */
-    public void delete(Long id, String jwt) {
-        patientApiClient.delete()
-                .uri("/{id}", id)
-                .header(HttpHeaders.AUTHORIZATION, bearer(jwt))
-                .retrieve()
-                .toBodilessEntity()
-                .block();
+    /** POST http://gateway-service:8080/api/patients */
+    public Patient create(Patient payload, HttpServletRequest request) {
+        return callApi("", HttpMethod.POST, payload, request, Patient.class);
     }
 
-    /**
-     * Génère l’en-tête {@code Authorization} au format Bearer.
-     *
-     * @param jwt le jeton JWT à inclure
-     * @return la valeur complète de l’en-tête Authorization
-     */
-    private static String bearer(String jwt) {
-        return "Bearer " + (jwt == null ? "" : jwt);
+    /** PUT http://gateway-service:8080/api/patients/{id} */
+    public Patient update(Long id, Patient payload, HttpServletRequest request) {
+        return callApi("/" + id, HttpMethod.PUT, payload, request, Patient.class);
+    }
+
+    /** DELETE http://gateway-service:8080/api/patients/{id} */
+    public void delete(Long id, HttpServletRequest request) {
+        callApi("/" + id, HttpMethod.DELETE, null, request, Void.class);
     }
 }

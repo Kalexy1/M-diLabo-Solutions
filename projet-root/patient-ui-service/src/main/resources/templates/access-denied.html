@@ -1,15 +1,30 @@
-<!DOCTYPE html> 
-<html xmlns:th="http://www.thymeleaf.org">
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8" />
     <title>Accès refusé</title>
 </head>
 <body>
+
+    <p>
+        <!-- Affiche l’utilisateur connecté s’il y en a un -->
+        <span sec:authorize="isAuthenticated()">
+            Connecté en tant que <strong><span sec:authentication="name"></span></strong> —
+            <a th:href="@{/auth/logout}">Se déconnecter</a>
+        </span>
+    </p>
+
     <h2>🚫 Accès refusé</h2>
     <p>Vous n’avez pas les autorisations nécessaires pour accéder à cette page.</p>
-    
-    <p><a th:href="@{/}">🏠 Retour à l'accueil</a></p>
 
-    <button onclick="history.back()">🔙 Retour à la page précédente</button>
+    <!-- IMPORTANT : repasser par le Gateway → /ui/... -->
+    <p>
+        <a th:href="@{/ui/patients}">🏠 Retour à l'accueil</a>
+    </p>
+
+    <button type="button" onclick="history.back()">🔙 Retour à la page précédente</button>
+
 </body>
 </html>

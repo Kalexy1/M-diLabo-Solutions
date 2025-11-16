@@ -1,47 +1,77 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+
 <head>
   <meta charset="UTF-8">
   <title>Rapport de risque</title>
+
   <style>
     .risk-none { color: green; font-weight: bold; }
     .risk-borderline { color: goldenrod; font-weight: bold; }
     .risk-danger { color: darkorange; font-weight: bold; }
     .risk-early { color: red; font-weight: bold; }
+
+    button.link {
+      background: none;
+      border: none;
+      color: blue;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 1em;
+      padding: 0;
+    }
   </style>
 </head>
+
 <body>
 
   <p>
     Bienvenue <span sec:authentication="name"></span> !
-    <a th:href="@{/logout}">Se déconnecter</a>
+    <!-- Logout en POST vers /auth/logout -->
+    <form th:action="@{/auth/logout}" method="post" style="display:inline;">
+      <button type="submit" class="link">Se déconnecter</button>
+    </form>
   </p>
 
   <div sec:authorize="hasRole('PRATICIEN')">
+
     <h1>Rapport de risque de diabète</h1>
 
     <p><strong>Patient :</strong>
-      <span th:text="${patient.prenom} + ' ' + ${patient.nom}"></span>
+      <span th:text="${patient.firstName + ' ' + patient.lastName}"></span>
     </p>
-    <p><strong>Date de naissance :</strong> <span th:text="${patient.dateNaissance}"></span></p>
-    <p><strong>Genre :</strong> <span th:text="${patient.genre}"></span></p>
-    <p><strong>Âge :</strong> <span th:text="${risk.age}"></span></p>
+
+    <p><strong>Date de naissance :</strong>
+      <span th:text="${patient.birthDate}"></span>
+    </p>
+
+    <p><strong>Genre :</strong>
+      <span th:text="${patient.gender}"></span>
+    </p>
+
+    <p th:if="${risk.age != null}">
+      <strong>Âge :</strong> <span th:text="${risk.age}"></span>
+    </p>
 
     <h2>Résultat</h2>
     <p>Le niveau de risque de diabète pour ce patient est :</p>
-    
+
     <p th:switch="${risk.riskLevel}">
-      <span th:case="'None'" class="risk-none">Aucun risque</span>
-      <span th:case="'Borderline'" class="risk-borderline">Risque limité</span>
-      <span th:case="'In Danger'" class="risk-danger">En danger</span>
-      <span th:case="'Early onset'" class="risk-early">Apparition précoce</span>
+      <span th:case="'NONE'"        class="risk-none">Aucun risque</span>
+      <span th:case="'BORDERLINE'"  class="risk-borderline">Risque limité</span>
+      <span th:case="'IN_DANGER'"   class="risk-danger">En danger</span>
+      <span th:case="'EARLY_ONSET'" class="risk-early">Apparition précoce</span>
       <span th:case="*">Inconnu</span>
     </p>
+
   </div>
 
   <br>
-  <a th:href="@{/patients}">⬅ Retour à la liste</a>
+
+  <!-- IMPORTANT : retour via /ui/patients (Gateway) -->
+  <a th:href="@{/ui/patients}">⬅ Retour à la liste</a>
 
 </body>
 </html>

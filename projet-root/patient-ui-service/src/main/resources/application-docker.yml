@@ -1,12 +1,11 @@
 server:
-  port: ${SERVER_PORT:8084}
+  port: ${SERVER_PORT:8080}
   forward-headers-strategy: framework
 
 spring:
   application:
     name: patient-ui-service
   thymeleaf:
-    # true = perf en conteneur ; passe à false uniquement en dev local
     cache: ${THYMELEAF_CACHE:true}
   autoconfigure:
     exclude:
@@ -18,7 +17,7 @@ spring:
       - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
 
 # ==============================
-# JWT (identique dans tout l'écosystème)
+# JWT (doit matcher Gateway / services)
 # ==============================
 jwt:
   secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
@@ -27,27 +26,26 @@ jwt:
   ttl-seconds: ${JWT_TTL_SECONDS:43200}
 
 # ==============================
-# Gateway (DNS Docker)
+# Base URL de la Gateway (réseau Docker)
 # ==============================
 gateway:
   base-url: ${GATEWAY_BASE_URL:http://gateway-service:8080}
 
 # ==============================
-# Chemins d'API derrière la Gateway
+# UI appelle les APIs VIA la Gateway
 # ==============================
 patients:
   api:
-    base: ${PATIENT_API_BASE_PATH:/api/patients}
+    url: ${PATIENT_API_BASE_URL:${gateway.base-url}/api/patients}
+
 notes:
   api:
-    base: ${NOTE_API_BASE_PATH:/api/notes}
+    url: ${NOTE_API_BASE_URL:${gateway.base-url}/api/notes}
+
 risk:
   api:
-    base: ${RISK_API_BASE_PATH:/api/risk}
+    url: ${RISK_API_BASE_URL:${gateway.base-url}/api/risk}
 
-# ==============================
-# Actuator
-# ==============================
 management:
   endpoints:
     web:
@@ -57,11 +55,15 @@ management:
     health:
       show-details: always
 
-# ==============================
-# Logging
-# ==============================
 logging:
   level:
     org.springframework.security: INFO
     org.springframework.web: INFO
     com.medilabo.patientui: INFO
+
+# ==============================
+# Clé lue par SecurityConfig (@Value("${security.jwt.secret}"))
+# ==============================
+security:
+  jwt:
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}

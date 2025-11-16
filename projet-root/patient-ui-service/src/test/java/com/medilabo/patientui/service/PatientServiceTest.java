@@ -1,48 +1,45 @@
 package com.medilabo.patientui.service;
 
 import com.medilabo.patientui.model.Patient;
+import com.medilabo.patientui.web.JwtCookieUtil;
+import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.web.reactive.function.client.*;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DefaultDataBufferFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.DefaultUriBuilderFactory;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.http.HttpMethod.*;
+import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 class PatientServiceTest {
 
-    private static WebClient clientReturning(
-            HttpStatus status, String jsonBody, AtomicReference<String> seenAuthHeader
-    ) {
-        ExchangeFunction fn = req -> {
-            if (seenAuthHeader != null) {
-                seenAuthHeader.set(req.headers().getFirst(HttpHeaders.AUTHORIZATION));
-            }
-            DefaultDataBufferFactory f = new DefaultDataBufferFactory();
-            Flux<DataBuffer> body = (jsonBody == null || jsonBody.isEmpty())
-                    ? Flux.empty()
-                    : Flux.just(f.wrap(jsonBody.getBytes(StandardCharsets.UTF_8)));
+    private RestTemplate restTemplate;
+    private MockRestServiceServer server;
+    private PatientService patientService;
 
-            ClientResponse resp = ClientResponse.create(status)
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .body(body)
-                    .build();
-            return Mono.just(resp);
-        };
+    @BeforeEach
+    void setUp() {
+        // RestTemplate configuré comme le bean patientApiClient :
+        // rootUri = base URL de l’API patients, SANS slash final
+        restTemplate = new RestTemplate();
+        restTemplate.setUriTemplateHandler(
+                new DefaultUriBuilderFactory("http://example.test/api/patients")
+        );
 
-        return WebClient.builder()
-                .baseUrl("http://example.test/api/patients")
-                .exchangeFunction(fn)
-                .build();
+        server = MockRestServiceServer.bindTo(restTemplate).build();
+        // En prod Spring injecte @Qualifier("patientApiClient"), ici on lui passe ce RestTemplate de test
+        patientService = new PatientService(restTemplate);
     }
 
     @Test
@@ -60,16 +57,26 @@ class PatientServiceTest {
               }
             ]
             """;
-        AtomicReference<String> seen = new AtomicReference<>();
-        WebClient client = clientReturning(HttpStatus.OK, json, seen);
 
-        PatientService service = new PatientService(client);
+        // PatientService.findAll() appelle path "" → URL finale = http://example.test/api/patients
+        server.expect(once(),
+                      requestTo("http://example.test/api/patients"))
+              .andExpect(method(GET))
+              .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer jwt-abc"))
+              .andExpect(header(HttpHeaders.COOKIE, JwtCookieUtil.DEFAULT_COOKIE_NAME + "=jwt-abc"))
+              .andRespond(withStatus(HttpStatus.OK)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .body(json));
 
-        List<Patient> res = service.findAll("jwt-abc");
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setCookies(new Cookie("JWT_TOKEN", "jwt-abc"));
+
+        List<Patient> res = patientService.findAll(req);
+
+        server.verify();
         assertThat(res).hasSize(1);
         assertThat(res.get(0).getLastName()).isEqualTo("Curie");
-
-        assertThat(seen.get()).isEqualTo("Bearer jwt-abc");
+        assertThat(res.get(0).getFirstName()).isEqualTo("Marie");
     }
 
     @Test
@@ -83,12 +90,24 @@ class PatientServiceTest {
               "gender": "M"
             }
             """;
-        WebClient client = clientReturning(HttpStatus.OK, json, null);
-        PatientService service = new PatientService(client);
 
-        Patient p = service.getOne(5L, "t");
+        // path "/5" → http://example.test/api/patients/5
+        server.expect(once(),
+                      requestTo("http://example.test/api/patients/5"))
+              .andExpect(method(GET))
+              .andRespond(withStatus(HttpStatus.OK)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .body(json));
+
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setCookies(new Cookie("JWT_TOKEN", "t"));
+
+        Patient p = patientService.getOne(5L, req);
+
+        server.verify();
         assertThat(p.getId()).isEqualTo(5L);
         assertThat(p.getFirstName()).isEqualTo("John");
+        assertThat(p.getLastName()).isEqualTo("Doe");
     }
 
     @Test
@@ -102,18 +121,33 @@ class PatientServiceTest {
               "gender": "F"
             }
             """;
-        WebClient client = clientReturning(HttpStatus.CREATED, json, null);
-        PatientService service = new PatientService(client);
 
-        Patient req = new Patient();
-        req.setFirstName("Alice");
-        req.setLastName("Liddell");
-        req.setBirthDate(LocalDate.of(1995,5,5));
-        req.setGender("F");
+        // create() appelle path "" en POST → URL finale = http://example.test/api/patients
+        server.expect(once(),
+                      requestTo("http://example.test/api/patients"))
+              .andExpect(method(POST))
+              .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer t"))
+              .andExpect(header(HttpHeaders.COOKIE, JwtCookieUtil.DEFAULT_COOKIE_NAME + "=t"))
+              .andExpect(header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE))
+              .andRespond(withStatus(HttpStatus.CREATED)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .body(json));
 
-        Patient saved = service.create(req, "t");
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setCookies(new Cookie("JWT_TOKEN", "t"));
+
+        Patient payload = new Patient();
+        payload.setFirstName("Alice");
+        payload.setLastName("Liddell");
+        payload.setBirthDate(LocalDate.of(1995, 5, 5));
+        payload.setGender("F");
+
+        Patient saved = patientService.create(payload, req);
+
+        server.verify();
         assertThat(saved.getId()).isEqualTo(9L);
         assertThat(saved.getFirstName()).isEqualTo("Alice");
+        assertThat(saved.getLastName()).isEqualTo("Liddell");
     }
 
     @Test
@@ -127,21 +161,47 @@ class PatientServiceTest {
               "gender": "F"
             }
             """;
-        WebClient client = clientReturning(HttpStatus.OK, json, null);
-        PatientService service = new PatientService(client);
+
+        // path "/1" en PUT → http://example.test/api/patients/1
+        server.expect(once(),
+                      requestTo("http://example.test/api/patients/1"))
+              .andExpect(method(PUT))
+              .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer t"))
+              .andExpect(header(HttpHeaders.COOKIE, JwtCookieUtil.DEFAULT_COOKIE_NAME + "=t"))
+              .andExpect(header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE))
+              .andRespond(withStatus(HttpStatus.OK)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .body(json));
+
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setCookies(new Cookie("JWT_TOKEN", "t"));
 
         Patient payload = new Patient();
         payload.setFirstName("Updated");
 
-        Patient updated = service.update(1L, payload, "t");
+        Patient updated = patientService.update(1L, payload, req);
+
+        server.verify();
         assertThat(updated.getFirstName()).isEqualTo("Updated");
+        assertThat(updated.getLastName()).isEqualTo("Curie");
     }
 
     @Test
     void delete_noContent_ok() {
-        WebClient client = clientReturning(HttpStatus.NO_CONTENT, null, null);
-        PatientService service = new PatientService(client);
+        // path "/77" en DELETE → http://example.test/api/patients/77
+        server.expect(once(),
+                      requestTo("http://example.test/api/patients/77"))
+              .andExpect(method(DELETE))
+              .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer t"))
+              .andExpect(header(HttpHeaders.COOKIE, JwtCookieUtil.DEFAULT_COOKIE_NAME + "=t"))
+              .andRespond(withStatus(HttpStatus.NO_CONTENT));
 
-        service.delete(77L, "t");
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setCookies(new Cookie("JWT_TOKEN", "t"));
+
+        patientService.delete(77L, req);
+
+        server.verify();
+        // pas d’exception = OK
     }
 }

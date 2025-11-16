@@ -2,34 +2,19 @@ spring:
   main:
     allow-bean-definition-overriding: true
   thymeleaf:
-    cache: false
+    cache: true
     check-template-location: false
-  datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  jpa:
-    hibernate:
-      ddl-auto: none
-  flyway:
-    enabled: false
-  liquibase:
-    enabled: false
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: http://localhost/fake
-
-JWT_SECRET: test-secret
 
 patients:
   api:
-    base: http://gateway.test:8080/api/patients
+    url: http://example.test/api/patients
 notes:
   api:
-    base: http://gateway.test:8080/api/notes
+    url: http://example.test/api/notes
 risk:
   api:
-    base: http://gateway.test:8080/api/risk
+    url: http://example.test/api/risk
+
+security:
+  jwt:
+    secret: test-test-test-test-test-test-1234567890

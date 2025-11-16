@@ -1,12 +1,12 @@
 server:
   port: 8084
-  forward-headers-strategy: framework  # redirections correctes derrière proxy
+  forward-headers-strategy: framework
 
 spring:
   application:
     name: patient-ui-service
   thymeleaf:
-    cache: false  # dev (mets true en prod)
+    cache: false
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
@@ -16,52 +16,37 @@ spring:
       - org.springframework.boot.autoconfigure.sql.init.SqlInitializationAutoConfiguration
       - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
 
-# =====================================
-# JWT (identique partout)
-# =====================================
+# ==============================
+# JWT (doit matcher Gateway / services)
+# ==============================
 jwt:
-  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
-  issuer: ${JWT_ISSUER:medilabo-auth}
-  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
-  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+  secret: 0123456789abcdefghijklmnopqrstuvwxyz012345
+  issuer: medilabo-auth
+  audience: gateway,patient,note,risk
+  ttl-seconds: 43200
 
-# =====================================
-# Base URL de la Gateway
-# - Local: http://localhost:8080
-# - Docker: injecte GATEWAY_BASE_URL=http://gateway-service:8080
-# =====================================
+# ==============================
+# Base URL de la Gateway en LOCAL
+# ==============================
 gateway:
   base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
 
-# =====================================
-# APIs derrière la Gateway
-# - *.api.base : chemin (stable)
-# - *.api.url  : URL complète. Si *_BASE_URL est fourni, on l’utilise;
-#                sinon on compose gateway.base-url + *.api.base
-# =====================================
+# ==============================
+# UI appelle les APIs VIA la Gateway
+# ==============================
 patients:
   api:
-    base: ${PATIENT_API_BASE:/api/patients}
-    url: ${PATIENT_API_BASE_URL:${gateway.base-url}${patients.api.base}}
+    # utilisé par @Value("${patients.api.url}") dans PatientService
+    url: ${PATIENT_API_BASE_URL:${gateway.base-url}/api/patients}
 
 notes:
   api:
-    base: ${NOTE_API_BASE:/api/notes}
-    url: ${NOTE_API_BASE_URL:${gateway.base-url}${notes.api.base}}
+    url: ${NOTE_API_BASE_URL:${gateway.base-url}/api/notes}
 
 risk:
   api:
-    base: ${RISK_API_BASE:/api/risk}
-    url: ${RISK_API_BASE_URL:${gateway.base-url}${risk.api.base}}
+    url: ${RISK_API_BASE_URL:${gateway.base-url}/api/risk}
 
-auth:
-  api:
-    base: ${AUTH_API_BASE:/auth}
-    url: ${AUTH_API_BASE_URL:${gateway.base-url}${auth.api.base}}
-
-# =====================================
-# Actuator
-# =====================================
 management:
   endpoints:
     web:
@@ -71,11 +56,16 @@ management:
     health:
       show-details: always
 
-# =====================================
-# Logging
-# =====================================
 logging:
   level:
     org.springframework.security: INFO
     org.springframework.web: INFO
     com.medilabo.patientui: DEBUG
+
+# ==============================
+# Clé lue par SecurityConfig (@Value("${security.jwt.secret}"))
+# ==============================
+security:
+  jwt:
+    # on réutilise la même clé que jwt.secret, avec une valeur par défaut
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
