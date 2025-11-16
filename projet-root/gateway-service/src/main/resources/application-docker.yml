@@ -6,118 +6,60 @@ spring:
   application:
     name: gateway-service
   main:
-    web-application-type: reactive
-  cloud:
-    gateway:
-      default-filters:
-        - PreserveHostHeader
-        - RewriteLocationResponseHeader=AS_IN_REQUEST, Location
-        - RemoveResponseHeader=Server
-        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin RETAIN_FIRST
+    # ✅ Mode Servlet (pas WebFlux)
+    web-application-type: servlet
 
-      routes:
-        # =======================
-        # UI (Front-end)
-        # =======================
-        - id: patient-ui
-          uri: http://patient-ui-service:8084
-          predicates:
-            - Path=/ui/**
-          filters: []
+  # ✅ Datasource (conteneurisée)
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/medilabo_gateway?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin.01234}
 
-        - id: ui-root
-          uri: http://patient-ui-service:8084
-          predicates:
-            - Path=/
-          filters:
-            - SetPath=/
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
 
-        # =======================
-        # AUTH
-        # =======================
-        - id: auth-service
-          uri: http://auth-service:8085
-          predicates:
-            - Path=/auth/**
-          filters:
-            - RemoveRequestHeader=Authorization
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
 
-        - id: login-to-auth
-          uri: http://auth-service:8085
-          predicates:
-            - Path=/login
-          filters:
-            - SetPath=/auth/login
-            - RemoveRequestHeader=Authorization
+# ✅ URL du UI vue par la Gateway dans le réseau Docker
+ui:
+  base-url: ${UI_BASE_URL:http://patient-ui-service:8080}
 
-        - id: logout-to-auth
-          uri: http://auth-service:8085
-          predicates:
-            - Path=/logout
-          filters:
-            - SetPath=/auth/logout
-            - RemoveRequestHeader=Authorization
+# ✅ Base du patient-service vue par la Gateway dans le réseau Docker
+patients:
+  backend:
+    base-url: ${PATIENTS_BACKEND_BASE_URL:http://patient-service:8080/api}
 
-        # =======================
-        # APIs
-        # =======================
-        - id: patient-api
-          uri: http://patient-service:8081
-          predicates:
-            - Path=/api/patients/**
+notes:
+  backend:
+    base-url: ${NOTES_BACKEND_BASE_URL:http://note-service:8080/api}
 
-        - id: note-api
-          uri: http://note-service:8082
-          predicates:
-            - Path=/api/notes/**
+risk:
+  backend:
+    base-url: ${RISK_BACKEND_BASE_URL:http://risk-assessment-service:8080/api}
 
-        - id: risk-api
-          uri: http://risk-assessment-service:8083
-          predicates:
-            - Path=/api/risk/**
+# ✅ JWT attendus par SecurityConfig/JwtDecoder (au NIVEAU RACINE)
+security:
+  jwt:
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+    ttl-seconds: 43200
+    cookie:
+      name: JWT_TOKEN
+      secure: false     # HTTP en dev Docker
+      samesite: None    # partage inter-ports
 
-      # =======================
-      # Global CORS configuration
-      # =======================
-      globalcors:
-        add-to-simple-url-handler-mapping: true
-        corsConfigurations:
-          '[/**]':
-            allowedOrigins:
-              - http://gateway-service:8080
-              - http://patient-ui-service:8084
-              - http://auth-service:8085
-            allowedMethods: "*"
-            allowedHeaders: "*"
-            allowCredentials: true
-
-# =======================
-# JWT Configuration
-# =======================
-jwt:
-  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
-  issuer: ${JWT_ISSUER:medilabo-auth}
-  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
-  ttl-seconds: ${JWT_TTL_SECONDS:43200}
-
-# =======================
-# Logging
-# =======================
 logging:
   level:
-    org.springframework.cloud.gateway: INFO
     org.springframework.security: INFO
-    reactor.netty.http.client: WARN
     com.medilabo.gatewayservice: DEBUG
 
-# =======================
-# Actuator for health checks
-# =======================
 management:
   endpoints:
     web:
       exposure:
         include: health,info
-  endpoint:
-    health:
-      show-details: always

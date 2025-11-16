@@ -7,5 +7,6 @@ logging:
     root: WARN
     org.springframework.security: INFO
 
-# Secret HS256 pour les tests (>= 32 octets)
-JWT_SECRET: 0123456789abcdefghijklmnopqrstuvwxyz012345
+security:
+  jwt:
+    secret: 0123456789abcdefghijklmnopqrstuvwxyz012345   # >= 32 chars

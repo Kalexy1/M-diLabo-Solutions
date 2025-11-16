@@ -1,80 +1,79 @@
 package com.medilabo.gatewayservice.config;
 
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.reactive.CorsWebFilter;
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-@EnableWebFluxSecurity
+@EnableWebSecurity
 public class SecurityConfig {
 
-    // Autorise le CORS de manière explicite (adapte origins si besoin)
     @Bean
-    public CorsWebFilter corsWebFilter() {
-        CorsConfiguration cfg = new CorsConfiguration();
-        // ✅ Mets ici les origines qui appellent ta gateway (localhost front, domaine de prod, etc.)
-        cfg.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "http://localhost:4200",
-            "https://app.medilabo.example" // exemple
-        ));
-        cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-        cfg.setAllowedHeaders(List.of("Authorization","Content-Type","X-Requested-With","Accept","Origin"));
-        cfg.setExposedHeaders(List.of("Location")); // si tu relies sur Location, ETag, etc.
-        cfg.setAllowCredentials(true); // important si tu utilises des cookies/sessions
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            // Pas de session serveur, on travaille avec un cookie JWT
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> {})
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cfg);
-        return new CorsWebFilter(source);
-    }
+            // Règles d’accès
+            .authorizeHttpRequests(auth -> auth
+                // Public : login/register + fichiers statiques
+                .requestMatchers("/auth/**", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
 
-    @Bean
-    public SecurityWebFilterChain singleChain(ServerHttpSecurity http) {
-        return http
-            .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            // ❌ ne pas désactiver CORS ; on garde cors() actif
-            .cors(c -> {}) 
-            .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
-            .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+                // UI : laissé public côté Spring (protégé via CookieToAuthHeaderFilter)
+                .requestMatchers("/ui/**").permitAll()
 
-            .authorizeExchange(ex -> ex
-                // Préflight CORS
-                .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // API : pour l’instant accessible sans Resource Server
+                .requestMatchers("/api/**").permitAll()
 
-                // Public
-                .pathMatchers("/auth/**", "/login", "/register").permitAll()
-                .pathMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
-                .pathMatchers("/actuator/health", "/actuator/info").permitAll()
-                .pathMatchers("/.well-known/**").permitAll() // ✅ évite du bruit inutile
-
-                // Protégé
-                .pathMatchers("/ui/**").authenticated()
-                .pathMatchers("/api/patients/**", "/api/notes/**", "/api/risk/**").authenticated()
-
-                // Le reste
-                .anyExchange().authenticated()
+                // Tout le reste est public
+                .anyRequest().permitAll()
             )
 
-            // Optionnel : clarifier 401 vs 403 pour le debug
-            .exceptionHandling(e -> e
-            	    .authenticationEntryPoint((swe, ex) -> {
-            	        swe.getResponse().setStatusCode(org.springframework.http.HttpStatus.UNAUTHORIZED);
-            	        return swe.getResponse().setComplete();
-            	    })
-            	    .accessDeniedHandler((swe, ex) -> {
-            	        swe.getResponse().setStatusCode(org.springframework.http.HttpStatus.FORBIDDEN);
-            	        return swe.getResponse().setComplete();
-            	    })
-            	)
+            // ❌ IMPORTANT : désactivation du Resource Server JWT
+            // (c’est lui qui envoyait les 401 automatiquement)
+            .oauth2ResourceServer(oauth2 -> oauth2.disable());
 
-            .build();
+        return http.build();
+    }
+
+    /** Bean utilisé uniquement si tu veux décoder un JWT manuellement (non utilisé par Spring Security ici) */
+    @Bean
+    public JwtDecoder jwtDecoder(@Value("${security.jwt.secret}") String secret) {
+        SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        return NimbusJwtDecoder.withSecretKey(key).build();
+    }
+
+    /** CORS permissif pour dev */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        var config = new CorsConfiguration();
+        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "*"));
+        config.setExposedHeaders(List.of("Location", "Set-Cookie"));
+        config.setAllowCredentials(true);
+
+        var source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }
