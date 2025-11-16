@@ -8,14 +8,37 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/patientdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:admin.01234}   # ⚠ mets ton vrai mot de passe local ici
+    password: ${SPRING_DATASOURCE_PASSWORD:admin.01234}   # ⚠ Mets ton mot de passe local MySQL ici
   jpa:
     hibernate:
       ddl-auto: update
     open-in-view: false
     properties:
-      # Hibernate 6 déduit automatiquement le dialecte
       hibernate.jdbc.time_zone: UTC
+
+# ==============================
+# Base URL du Gateway (en local)
+# ==============================
+gateway:
+  base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
+
+# ==============================
+# URLs d’accès via la Gateway (local)
+# ==============================
+patients:
+  api:
+    base: ${PATIENT_API_BASE:/api/patients}
+    url: ${PATIENT_API_BASE_URL:${gateway.base-url}${patients.api.base}}
+
+notes:
+  api:
+    base: ${NOTE_API_BASE:/api/notes}
+    url: ${NOTE_API_BASE_URL:${gateway.base-url}${notes.api.base}}
+
+risk:
+  api:
+    base: ${RISK_API_BASE:/api/risk}
+    url: ${RISK_API_BASE_URL:${gateway.base-url}${risk.api.base}}
 
 # ==============================
 # JWT partagé avec tout l’écosystème
@@ -25,6 +48,11 @@ jwt:
   issuer: ${JWT_ISSUER:medilabo-auth}
   audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
   ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# ✅ Clé utilisée par SecurityConfig : @Value("${security.jwt.secret}")
+security:
+  jwt:
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
 
 # ==============================
 # Actuator (monitoring / health)
@@ -45,4 +73,5 @@ logging:
   level:
     org.springframework.security: INFO
     org.springframework.web: INFO
+    org.springframework.data.jpa: INFO
     com.medilabo.patientservice: DEBUG

@@ -42,7 +42,6 @@ public class PatientController {
      * @param q nom ou fragment de nom à rechercher (optionnel)
      * @return la liste des patients correspondants
      */
-    @PreAuthorize("hasAnyRole('ORGANISATEUR', 'PRATICIEN')")
     @GetMapping
     public List<Patient> findAll(@RequestParam(value = "q", required = false) String q) {
         if (q != null && !q.isBlank()) {
@@ -57,7 +56,6 @@ public class PatientController {
      * @param id identifiant du patient
      * @return le patient correspondant
      */
-    @PreAuthorize("hasAnyRole('ORGANISATEUR', 'PRATICIEN')")
     @GetMapping("/{id}")
     public Patient getOne(@PathVariable Long id) {
         return service.getById(id);
@@ -69,7 +67,6 @@ public class PatientController {
      * @param payload objet {@link Patient} à créer
      * @return le patient créé
      */
-    @PreAuthorize("hasRole('ORGANISATEUR')")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     public Patient create(@Valid @RequestBody Patient payload) {
@@ -83,7 +80,6 @@ public class PatientController {
      * @param payload objet {@link Patient} contenant les nouvelles données
      * @return le patient mis à jour
      */
-    @PreAuthorize("hasRole('ORGANISATEUR')")
     @PutMapping("/{id}")
     public Patient update(@PathVariable Long id, @Valid @RequestBody Patient payload) {
         return service.update(id, payload);
@@ -94,7 +90,6 @@ public class PatientController {
      *
      * @param id identifiant du patient à supprimer
      */
-    @PreAuthorize("hasRole('ORGANISATEUR')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
