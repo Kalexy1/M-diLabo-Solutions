@@ -8,25 +8,25 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Service gérant la logique métier liée à la gestion des patients.
- * <p>
- * Cette classe assure la création, la consultation, la mise à jour et la suppression
- * des entités {@link Patient} en s’appuyant sur le {@link PatientRepository}.
- * </p>
+ * Service métier gérant la gestion des patients.
+ *
+ * <p>Ce service centralise les opérations de création, consultation,
+ * modification et suppression des entités {@link Patient}. Il s'appuie sur
+ * le {@link PatientRepository} pour interagir avec la base de données.</p>
  */
 @Service
 @Transactional(readOnly = true)
 public class PatientService {
 
     /**
-     * Référentiel d’accès aux données des patients.
+     * Repository d'accès aux données des patients.
      */
     private final PatientRepository repo;
 
     /**
-     * Constructeur injectant le repository de gestion des patients.
+     * Construit le service de gestion des patients.
      *
-     * @param repo le repository {@link PatientRepository} à utiliser
+     * @param repo repository JPA pour les entités {@link Patient}
      */
     public PatientService(PatientRepository repo) {
         this.repo = repo;
@@ -35,17 +35,17 @@ public class PatientService {
     /**
      * Récupère la liste de tous les patients.
      *
-     * @return la liste complète des patients enregistrés
+     * @return liste complète des patients enregistrés
      */
     public List<Patient> findAll() {
         return repo.findAll();
     }
 
     /**
-     * Recherche un patient à partir de son identifiant.
+     * Récupère un patient via son identifiant.
      *
-     * @param id l’identifiant du patient
-     * @return le patient correspondant
+     * @param id identifiant du patient
+     * @return patient correspondant
      * @throws IllegalArgumentException si aucun patient n’est trouvé
      */
     public Patient getById(Long id) {
@@ -54,10 +54,11 @@ public class PatientService {
     }
 
     /**
-     * Recherche des patients dont le nom de famille contient une sous-chaîne donnée.
+     * Recherche les patients dont le nom de famille contient une sous-chaîne donnée,
+     * sans tenir compte de la casse.
      *
-     * @param lastNamePart une partie du nom de famille (non sensible à la casse)
-     * @return la liste des patients correspondants
+     * @param lastNamePart fragment du nom de famille à rechercher
+     * @return liste des patients correspondants
      */
     public List<Patient> searchByLastName(String lastNamePart) {
         return repo.findByLastNameContainingIgnoreCase(
@@ -67,12 +68,12 @@ public class PatientService {
 
     /**
      * Crée un nouveau patient.
-     * <p>
-     * L’identifiant est forcé à {@code null} pour garantir une nouvelle insertion.
-     * </p>
      *
-     * @param p le patient à créer
-     * @return le patient créé et enregistré
+     * <p>L'identifiant est remis à {@code null} afin de forcer la création
+     * d'une nouvelle entrée en base.</p>
+     *
+     * @param p patient à enregistrer
+     * @return patient créé et sauvegardé
      */
     @Transactional
     public Patient create(Patient p) {
@@ -83,9 +84,9 @@ public class PatientService {
     /**
      * Met à jour un patient existant avec les nouvelles informations fournies.
      *
-     * @param id      l’identifiant du patient à mettre à jour
-     * @param payload les nouvelles données du patient
-     * @return le patient mis à jour
+     * @param id identifiant du patient à mettre à jour
+     * @param payload nouvelles données du patient
+     * @return patient mis à jour
      * @throws IllegalArgumentException si le patient n’existe pas
      */
     @Transactional
@@ -101,9 +102,9 @@ public class PatientService {
     }
 
     /**
-     * Supprime un patient à partir de son identifiant.
+     * Supprime un patient via son identifiant.
      *
-     * @param id l’identifiant du patient à supprimer
+     * @param id identifiant du patient à supprimer
      */
     @Transactional
     public void delete(Long id) {

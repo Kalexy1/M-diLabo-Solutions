@@ -4,43 +4,45 @@ import com.medilabo.patientservice.model.Patient;
 import com.medilabo.patientservice.service.PatientService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
  * Contrôleur REST pour la gestion des patients.
- * <p>
- * Fournit les opérations CRUD permettant de créer, lire, mettre à jour
- * et supprimer les patients. L’accès aux endpoints est restreint aux
- * utilisateurs disposant des rôles {@code ORGANISATEUR} ou {@code PRATICIEN}.
- * </p>
+ *
+ * <p>Expose les opérations CRUD permettant de créer, lire, mettre à jour
+ * et supprimer des patients. Toutes les routes se trouvent sous
+ * {@code /api/patients}.</p>
+ *
+ * <p>L'accès aux endpoints est généralement sécurisé par Spring Security
+ * et réservé aux utilisateurs possédant les rôles adéquats
+ * (tels que {@code ORGANISATEUR} ou {@code PRATICIEN}).</p>
  */
 @RestController
 @RequestMapping("/api/patients")
 public class PatientController {
 
     /**
-     * Service gérant la logique métier liée aux patients.
+     * Service métier gérant les opérations liées aux patients.
      */
     private final PatientService service;
 
     /**
-     * Constructeur injectant le service de gestion des patients.
+     * Construit un contrôleur de gestion des patients.
      *
-     * @param service instance du {@link PatientService}
+     * @param service service métier manipulant les entités {@link Patient}
      */
     public PatientController(PatientService service) {
         this.service = service;
     }
 
     /**
-     * Récupère la liste de tous les patients ou effectue une recherche
-     * par nom de famille si le paramètre {@code q} est fourni.
+     * Récupère tous les patients ou, si un paramètre de recherche est fourni,
+     * effectue une recherche par nom de famille.
      *
-     * @param q nom ou fragment de nom à rechercher (optionnel)
-     * @return la liste des patients correspondants
+     * @param q fragment de nom à rechercher (optionnel)
+     * @return liste des patients correspondants
      */
     @GetMapping
     public List<Patient> findAll(@RequestParam(value = "q", required = false) String q) {
@@ -51,10 +53,10 @@ public class PatientController {
     }
 
     /**
-     * Récupère un patient à partir de son identifiant unique.
+     * Récupère un patient via son identifiant unique.
      *
      * @param id identifiant du patient
-     * @return le patient correspondant
+     * @return patient correspondant
      */
     @GetMapping("/{id}")
     public Patient getOne(@PathVariable Long id) {
@@ -64,8 +66,8 @@ public class PatientController {
     /**
      * Crée un nouveau patient dans la base de données.
      *
-     * @param payload objet {@link Patient} à créer
-     * @return le patient créé
+     * @param payload données du patient à créer
+     * @return le patient nouvellement créé
      */
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
@@ -76,8 +78,8 @@ public class PatientController {
     /**
      * Met à jour les informations d’un patient existant.
      *
-     * @param id      identifiant du patient à modifier
-     * @param payload objet {@link Patient} contenant les nouvelles données
+     * @param id identifiant du patient à modifier
+     * @param payload données modifiées du patient
      * @return le patient mis à jour
      */
     @PutMapping("/{id}")
@@ -86,7 +88,7 @@ public class PatientController {
     }
 
     /**
-     * Supprime un patient à partir de son identifiant unique.
+     * Supprime un patient à partir de son identifiant.
      *
      * @param id identifiant du patient à supprimer
      */
