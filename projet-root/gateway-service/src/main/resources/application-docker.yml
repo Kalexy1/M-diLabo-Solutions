@@ -1,19 +1,19 @@
-server: 
-  port: 8080
+server:
+  port: ${SERVER_PORT:8080}
   forward-headers-strategy: framework
 
 spring:
   application:
     name: gateway-service
+
   main:
-    # ✅ Gateway en mode Servlet/MVC (pas WebFlux)
     web-application-type: servlet
 
-  # --- Datasource (users du Gateway) ---
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/medilabo_gateway?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/medilabo_gateway?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:admin.01234}
+
   jpa:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
@@ -25,32 +25,35 @@ spring:
     prefix: classpath:/templates/
     suffix: .html
 
-# 👉 Base de l'UI vue par le Gateway en LOCAL
+# ---- UI ----
 ui:
-  base-url: ${UI_BASE_URL:http://localhost:8084}
+  base-url: ${UI_BASE_URL:http://patient-ui-service:8084}
 
-# 👉 Bases des backends vus par le Gateway en LOCAL
+# ---- Patient Service ----
 patients:
   backend:
-    base-url: ${PATIENT_BACKEND_BASE_URL:http://localhost:8081/api}
+    base-url: ${PATIENTS_BACKEND_BASE_URL:http://patient-service:8081/api}
 
+# ---- Note Service ----
 notes:
   backend:
-    base-url: ${NOTE_BACKEND_BASE_URL:http://localhost:8082/api/notes}
+    # ⚠️ IMPORTANT : doit pointer vers /api/notes
+    base-url: ${NOTES_BACKEND_BASE_URL:http://note-service:8082/api}
 
+# ---- Risk Assessment Service ----
 risk:
   backend:
-    base-url: ${RISK_BACKEND_BASE_URL:http://localhost:8083/api}
+    base-url: ${RISK_BACKEND_BASE_URL:http://risk-assessment-service:8083/api}
 
+# ---- JWT Configuration ----
 security:
   jwt:
-    # clé HS256 pour signer les JWT (≥ 32 chars, identique partout)
     secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
     ttl-seconds: 43200
     cookie:
       name: JWT_TOKEN
-      secure: false     # ❗ HTTP local => false
-      samesite: Lax     # ❗ 'None' nécessite Secure=true (HTTPS)
+      secure: false
+      samesite: Lax
 
 logging:
   level:
