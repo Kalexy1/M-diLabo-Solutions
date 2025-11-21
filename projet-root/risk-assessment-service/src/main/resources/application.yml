@@ -9,25 +9,21 @@ server:
   forward-headers-strategy: framework
 
 # ==============================
-# Base URL de la Gateway en local
-# ==============================
-gateway:
-  base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
-
-# ==============================
-# APIs derrière la Gateway (local)
+# Base URL des microservices en LOCAL (sans Gateway)
 # ==============================
 patients:
   api:
-    base: ${PATIENT_API_BASE:/api/patients}
-    url: ${PATIENT_API_BASE_URL:${gateway.base-url}${patients.api.base}}
+    # URL complète directement vers patient-service en local
+    url: ${PATIENT_API_BASE_URL:http://localhost:8081/api/patients}
 
 notes:
   api:
-    base: ${NOTE_API_BASE:/api/notes}
-    url: ${NOTE_API_BASE_URL:${gateway.base-url}${notes.api.base}}
+    # URL complète directement vers note-service en local
+    url: ${NOTE_API_BASE_URL:http://localhost:8082/api/notes}
 
-# (facultatif) si ton service expose aussi /api/risk
+# (facultatif) si ton service expose aussi /api/risk via le Gateway, tu peux garder ça :
+gateway:
+  base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
 risk:
   api:
     base: ${RISK_API_BASE:/api/risk}
@@ -42,14 +38,10 @@ jwt:
   audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
   ttl-seconds: ${JWT_TTL_SECONDS:43200}
 
-# ✅ Pour SecurityConfig (@Value("${security.jwt.secret}"))
 security:
   jwt:
     secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
 
-# ==============================
-# Actuator
-# ==============================
 management:
   endpoints:
     web:
@@ -59,9 +51,6 @@ management:
     health:
       show-details: always
 
-# ==============================
-# Logging
-# ==============================
 logging:
   level:
     org.springframework.security: INFO

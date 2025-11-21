@@ -3,20 +3,23 @@ package com.medilabo.riskassessment.controller;
 import com.medilabo.riskassessment.dto.RiskAssessmentResponse;
 import com.medilabo.riskassessment.service.RiskAssessmentService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * Contrôleur REST du microservice <strong>risk-assessment-service</strong>.
+ *
  * <p>
- * Ce contrôleur expose l’API {@code /api/risk/{patientId}} permettant de calculer
- * le niveau de risque de diabète d’un patient à partir de ses informations médicales
- * et de son historique de notes.
+ * Expose l’endpoint {@code GET /api/risk/{patientId}} permettant d'évaluer
+ * le niveau de risque de diabète d’un patient en interrogeant :
  * </p>
+ * <ul>
+ *     <li>le microservice <strong>patient-service</strong> pour les données du patient,</li>
+ *     <li>le microservice <strong>note-service</strong> pour l’historique médical.</li>
+ * </ul>
+ *
  * <p>
- * L’accès à cet endpoint est restreint aux utilisateurs ayant le rôle {@code PRATICIEN}.
- * L’authentification est gérée par un serveur de ressources JWT configuré dans la
- * couche de sécurité.
+ * L’accès à cet endpoint est contrôlé par la configuration de sécurité :
+ * seuls les utilisateurs authentifiés (via JWT) peuvent y accéder.
  * </p>
  */
 @RestController
@@ -24,26 +27,26 @@ import org.springframework.web.bind.annotation.*;
 public class RiskAssessmentController {
 
     /**
-     * Service applicatif chargé du calcul du niveau de risque.
+     * Service chargé du calcul du risque de diabète.
      */
     private final RiskAssessmentService riskService;
 
     /**
-     * Constructeur du contrôleur.
+     * Constructeur injectant le service de calcul du risque.
      *
-     * @param riskService le service responsable du calcul du risque
+     * @param riskService service applicatif responsable de l’évaluation du risque
      */
     public RiskAssessmentController(RiskAssessmentService riskService) {
         this.riskService = riskService;
     }
 
     /**
-     * Évalue le niveau de risque de diabète pour un patient donné.
+     * Évalue et retourne le niveau de risque pour un patient donné.
      *
-     * @param patientId l’identifiant du patient
-     * @return une {@link ResponseEntity} contenant le résultat du calcul du risque
+     * @param patientId identifiant du patient
+     * @return une réponse contenant les informations du patient et son niveau de risque
      */
-    @GetMapping(path = "/{patientId}")
+    @GetMapping("/{patientId}")
     public ResponseEntity<RiskAssessmentResponse> getRisk(@PathVariable Long patientId) {
         return ResponseEntity.ok(riskService.assessRiskDetailed(patientId));
     }

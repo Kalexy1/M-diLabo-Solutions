@@ -3,20 +3,21 @@ package com.medilabo.riskassessment.dto;
 import java.time.Instant;
 
 /**
- * Représente une note médicale transférée depuis le microservice
- * <strong>note-service</strong> vers le microservice
+ * DTO représentant une note médicale transmise par le microservice
+ * <strong>note-service</strong> au microservice
  * <strong>risk-assessment-service</strong>.
+ *
  * <p>
- * Cette classe est utilisée pour l’analyse du contenu médical
- * lors de l’évaluation du risque de diabète.
+ * Ce modèle est utilisé pour l’analyse du contenu textuel des notes
+ * lors du calcul du risque de diabète.
  * </p>
  */
 public class NoteDTO {
 
     /**
-     * Identifiant unique de la note (généré par MongoDB dans note-service).
+     * Identifiant unique de la note (ObjectId MongoDB sérialisé en chaîne).
      */
-    private Long id;
+    private String id;
 
     /**
      * Identifiant du patient associé à cette note.
@@ -39,20 +40,20 @@ public class NoteDTO {
     private Instant updatedAt;
 
     /**
-     * Constructeur par défaut (nécessaire pour la désérialisation JSON).
+     * Constructeur par défaut requis pour la désérialisation JSON.
      */
     public NoteDTO() {}
 
     /**
      * Constructeur complet.
      *
-     * @param id        identifiant unique de la note
+     * @param id identifiant unique de la note
      * @param patientId identifiant du patient associé
-     * @param content   contenu textuel de la note
-     * @param createdAt date et heure de création
-     * @param updatedAt date et heure de dernière mise à jour
+     * @param content contenu textuel de la note
+     * @param createdAt date de création de la note
+     * @param updatedAt date de dernière mise à jour
      */
-    public NoteDTO(Long id, Long patientId, String content, Instant createdAt, Instant updatedAt) {
+    public NoteDTO(String id, Long patientId, String content, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.patientId = patientId;
         this.content = content;
@@ -61,7 +62,7 @@ public class NoteDTO {
     }
 
     /**
-     * Constructeur simplifié (pour les notes basées uniquement sur le contenu).
+     * Constructeur simplifié basé uniquement sur le contenu.
      *
      * @param content contenu textuel de la note
      */
@@ -72,9 +73,9 @@ public class NoteDTO {
     /**
      * Retourne l’identifiant de la note.
      *
-     * @return l’identifiant de la note
+     * @return identifiant de la note
      */
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
@@ -83,7 +84,7 @@ public class NoteDTO {
      *
      * @param id identifiant de la note
      */
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -117,14 +118,14 @@ public class NoteDTO {
     /**
      * Définit le contenu textuel de la note.
      *
-     * @param content contenu de la note
+     * @param content texte de la note
      */
     public void setContent(String content) {
         this.content = content;
     }
 
     /**
-     * Retourne la date et l’heure de création de la note.
+     * Retourne la date de création de la note.
      *
      * @return date de création
      */
@@ -133,7 +134,7 @@ public class NoteDTO {
     }
 
     /**
-     * Définit la date et l’heure de création de la note.
+     * Définit la date de création de la note.
      *
      * @param createdAt date de création
      */
@@ -142,7 +143,7 @@ public class NoteDTO {
     }
 
     /**
-     * Retourne la date et l’heure de dernière mise à jour.
+     * Retourne la date de dernière mise à jour.
      *
      * @return date de mise à jour
      */
@@ -151,7 +152,7 @@ public class NoteDTO {
     }
 
     /**
-     * Définit la date et l’heure de dernière mise à jour.
+     * Définit la date de dernière mise à jour.
      *
      * @param updatedAt date de mise à jour
      */

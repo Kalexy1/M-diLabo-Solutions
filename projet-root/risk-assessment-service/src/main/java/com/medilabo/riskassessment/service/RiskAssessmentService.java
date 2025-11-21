@@ -13,34 +13,35 @@ import java.util.List;
 
 /**
  * Service applicatif chargé d’évaluer le risque de diabète d’un patient.
+ *
  * <p>
- * Ce service interroge les microservices externes (patients et notes) via la Gateway,
- * calcule le nombre de déclencheurs présents dans les notes, détermine l’âge du patient
- * puis applique les règles métier pour produire un niveau de risque.
+ * Il interroge les microservices externes (patients et notes), calcule le
+ * nombre de termes déclencheurs présents dans les notes, détermine l’âge
+ * du patient puis applique les règles métier pour produire un niveau de risque.
  * </p>
  */
 @Service
 public class RiskAssessmentService {
 
     /**
-     * Client HTTP utilisé pour communiquer avec les microservices via la Gateway.
+     * Client HTTP utilisé pour communiquer avec les microservices externes.
      */
     private final RestTemplate restTemplate;
 
     /**
-     * Base URL (terminée par un {@code /}) vers l’API des patients exposée par la Gateway.
-     * <p>Exemple : {@code http://gateway-service:8080/api/patients/}</p>
+     * URL de base de l’API des patients (sans identifiant à la fin).
+     * Exemple : {@code http://patient-service:8081/api/patients}
      */
     private final String patientApiBase;
 
     /**
-     * Base URL (terminée par un {@code /}) vers l’API des notes exposée par la Gateway.
-     * <p>Exemple : {@code http://gateway-service:8080/api/notes/patient/}</p>
+     * URL de base de l’API des notes.
+     * Exemple : {@code http://note-service:8082/api/notes}
      */
     private final String noteApiBase;
 
     /**
-     * Ensemble des termes déclencheurs recherchés dans le contenu des notes.
+     * Liste des termes déclencheurs recherchés dans le contenu des notes.
      */
     private static final List<String> TRIGGERS = List.of(
         "hémoglobine a1c", "microalbumine", "taille", "poids",
@@ -51,24 +52,25 @@ public class RiskAssessmentService {
     /**
      * Construit le service d’évaluation du risque.
      *
-     * @param restTemplate    client HTTP pour les appels sortants
-     * @param patientApiBase  base URL de l’API des patients (peut ne pas se terminer par {@code /})
-     * @param noteApiBase     base URL de l’API des notes (peut ne pas se terminer par {@code /})
+     * @param restTemplate   client HTTP utilisé pour les appels sortants
+     * @param patientApiBase URL de base de l’API patient (sans identifiant)
+     * @param noteApiBase    URL de base de l’API des notes
      */
     public RiskAssessmentService(
             RestTemplate restTemplate,
-            @Value("${PATIENT_API_BASE_URL:http://gateway-service:8080/api/patients}") String patientApiBase,
-            @Value("${NOTE_API_BASE_URL:http://gateway-service:8080/api/notes/patient}") String noteApiBase) {
+            @Value("${patients.api.url:http://localhost:8081/api/patients}") String patientApiBase,
+            @Value("${notes.api.url:http://localhost:8082/api/notes}") String noteApiBase) {
+
         this.restTemplate = restTemplate;
         this.patientApiBase = ensureEndsWithSlash(trimEnd(patientApiBase));
         this.noteApiBase = ensureEndsWithSlash(trimEnd(noteApiBase));
     }
 
     /**
-     * Supprime un {@code /} final s’il existe.
+     * Supprime un slash final éventuel de l’URL fournie.
      *
-     * @param s chaîne à normaliser (peut être nulle)
-     * @return la chaîne sans {@code /} final ; jamais {@code null}
+     * @param s chaîne représentant une URL
+     * @return même URL sans slash final, ou chaîne vide si {@code null} ou blanche
      */
     private static String trimEnd(String s) {
         if (s == null || s.isBlank()) return "";
@@ -76,10 +78,10 @@ public class RiskAssessmentService {
     }
 
     /**
-     * Ajoute un {@code /} final s’il est absent.
+     * S’assure qu’une URL se termine par un slash.
      *
-     * @param s chaîne à normaliser (peut être nulle)
-     * @return la chaîne terminée par {@code /}
+     * @param s chaîne représentant une URL
+     * @return URL terminée par {@code /}
      */
     private static String ensureEndsWithSlash(String s) {
         if (s == null || s.isBlank()) return "/";
@@ -87,18 +89,23 @@ public class RiskAssessmentService {
     }
 
     /**
-     * Calcule le niveau de risque sous forme textuelle.
-     * <p>
-     * Valeurs possibles : {@code "None"}, {@code "Borderline"}, {@code "In Danger"}, {@code "Early onset"}.
-     * Si le patient n’est pas récupéré (appel externe en échec), retourne {@code "None"}.
-     * </p>
+     * Calcule le niveau de risque de diabète d’un patient et renvoie
+     * uniquement le libellé du risque.
      *
      * @param patientId identifiant du patient
-     * @return le niveau de risque évalué
+     * @return niveau de risque (par exemple {@code None}, {@code Borderline},
+     *         {@code In Danger}, {@code Early onset})
      */
     public String assessRisk(Long patientId) {
-        PatientDTO patient = restTemplate.getForObject(patientApiBase + patientId, PatientDTO.class);
-        NoteDTO[] notes = restTemplate.getForObject(noteApiBase + patientId, NoteDTO[].class);
+        PatientDTO patient = restTemplate.getForObject(
+                patientApiBase + patientId,
+                PatientDTO.class
+        );
+
+        NoteDTO[] notes = restTemplate.getForObject(
+                noteApiBase + "patient/" + patientId,
+                NoteDTO[].class
+        );
 
         if (patient == null) return "None";
 
@@ -110,18 +117,22 @@ public class RiskAssessmentService {
     }
 
     /**
-     * Variante détaillée retournant un objet de réponse complet.
-     * <p>
-     * Si le patient n’est pas récupéré, retourne une réponse avec valeurs par défaut
-     * et un niveau de risque {@code "None"}.
-     * </p>
+     * Calcule le niveau de risque de diabète d’un patient et renvoie
+     * un objet détaillé contenant les informations patient et le risque.
      *
      * @param patientId identifiant du patient
-     * @return une réponse détaillée d’évaluation de risque
+     * @return un {@link RiskAssessmentResponse} détaillant le résultat
      */
     public RiskAssessmentResponse assessRiskDetailed(Long patientId) {
-        PatientDTO patient = restTemplate.getForObject(patientApiBase + patientId, PatientDTO.class);
-        NoteDTO[] notes = restTemplate.getForObject(noteApiBase + patientId, NoteDTO[].class);
+        PatientDTO patient = restTemplate.getForObject(
+                patientApiBase + patientId,
+                PatientDTO.class
+        );
+
+        NoteDTO[] notes = restTemplate.getForObject(
+                noteApiBase + "patient/" + patientId,
+                NoteDTO[].class
+        );
 
         if (patient == null) {
             return new RiskAssessmentResponse(null, null, null, 0, "None");
@@ -133,11 +144,11 @@ public class RiskAssessmentService {
         String risk = determineRiskLevel(age, gender, triggerCount);
 
         return new RiskAssessmentResponse(
-            patient.getId(),
-            patient.getFirstName(),
-            patient.getLastName(),
-            age,
-            risk
+                patient.getId(),
+                patient.getFirstName(),
+                patient.getLastName(),
+                age,
+                risk
         );
     }
 
@@ -145,7 +156,7 @@ public class RiskAssessmentService {
      * Calcule l’âge à partir de la date de naissance.
      *
      * @param birthDate date de naissance
-     * @return l’âge en années ; {@code 0} si la date est nulle
+     * @return âge en années, ou {@code 0} si la date est nulle
      */
     private int calculateAge(LocalDate birthDate) {
         if (birthDate == null) return 0;
@@ -153,13 +164,11 @@ public class RiskAssessmentService {
     }
 
     /**
-     * Compte le nombre de termes déclencheurs présents dans les notes.
-     * <p>
-     * La recherche est effectuée en insensible à la casse sur la liste {@link #TRIGGERS}.
-     * </p>
+     * Compte le nombre d’occurrences de termes déclencheurs
+     * dans l’ensemble des notes fournies.
      *
-     * @param notes tableau de notes (peut être {@code null})
-     * @return le nombre total de déclencheurs trouvés
+     * @param notes tableau de notes à analyser
+     * @return nombre total de déclencheurs trouvés
      */
     private int countTriggerTerms(NoteDTO[] notes) {
         if (notes == null) return 0;
@@ -177,32 +186,13 @@ public class RiskAssessmentService {
     }
 
     /**
-     * Détermine le niveau de risque en fonction de l’âge, du genre et du nombre de déclencheurs.
-     * <p>
-     * Règles métier :
-     * <ul>
-     *     <li>Si aucun déclencheur : {@code "None"}.</li>
-     *     <li>Âge &gt; 30 :
-     *         <ul>
-     *             <li>&ge; 8 ⇒ {@code "Early onset"}</li>
-     *             <li>&ge; 6 ⇒ {@code "In Danger"}</li>
-     *             <li>&ge; 2 ⇒ {@code "Borderline"}</li>
-     *         </ul>
-     *     </li>
-     *     <li>Âge ≤ 30 :
-     *         <ul>
-     *             <li>Homme (M) : &ge; 5 ⇒ {@code "Early onset"}, &ge; 3 ⇒ {@code "In Danger"}</li>
-     *             <li>Femme (F) : &ge; 7 ⇒ {@code "Early onset"}, &ge; 4 ⇒ {@code "In Danger"}</li>
-     *         </ul>
-     *     </li>
-     * </ul>
-     * Dans les autres cas, retourne {@code "None"}.
-     * </p>
+     * Détermine le niveau de risque à partir de l’âge, du sexe et
+     * du nombre de déclencheurs trouvés.
      *
-     * @param age          âge du patient
-     * @param gender       genre du patient (ex. {@code "M"} ou {@code "F"})
+     * @param age âge du patient
+     * @param gender sexe du patient (ex. {@code "M"} ou {@code "F"})
      * @param triggerCount nombre de déclencheurs détectés
-     * @return le niveau de risque évalué
+     * @return libellé du niveau de risque
      */
     private String determineRiskLevel(int age, String gender, int triggerCount) {
         if (triggerCount == 0) return "None";

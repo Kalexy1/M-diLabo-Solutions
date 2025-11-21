@@ -4,20 +4,21 @@ package com.medilabo.riskassessment.dto;
  * Représente la réponse retournée par le microservice
  * <strong>risk-assessment-service</strong> après l’évaluation
  * du risque de diabète d’un patient.
+ *
  * <p>
- * Cette classe contient les informations essentielles du patient
- * ainsi que son niveau de risque calculé selon :
- * <ul>
- *     <li>son âge,</li>
- *     <li>son sexe,</li>
- *     <li>et la présence de termes déclencheurs dans ses notes médicales.</li>
- * </ul>
+ * Cette réponse regroupe les informations essentielles du patient ainsi
+ * que le niveau de risque calculé à partir :
  * </p>
+ * <ul>
+ *     <li>de son âge,</li>
+ *     <li>de son sexe,</li>
+ *     <li>et de la présence de termes déclencheurs dans ses notes médicales.</li>
+ * </ul>
  */
 public class RiskAssessmentResponse {
 
     /**
-     * Identifiant unique du patient concerné par l’évaluation.
+     * Identifiant unique du patient évalué.
      */
     private Long patientId;
 
@@ -32,32 +33,31 @@ public class RiskAssessmentResponse {
     private String lastName;
 
     /**
-     * Âge du patient, calculé à partir de sa date de naissance.
+     * Âge du patient.
      */
     private int age;
 
     /**
-     * Niveau de risque évalué.
-     * <p>
-     * Exemples de valeurs possibles :
+     * Niveau de risque détecté.
+     *
+     * <p>Exemples de valeurs possibles :</p>
      * <ul>
-     *     <li>{@code None} — Aucun risque détecté</li>
-     *     <li>{@code Borderline} — Risque limité</li>
-     *     <li>{@code In Danger} — Patient en danger</li>
-     *     <li>{@code Early onset} — Apparition précoce du diabète</li>
+     *     <li>{@code None}</li>
+     *     <li>{@code Borderline}</li>
+     *     <li>{@code In Danger}</li>
+     *     <li>{@code Early onset}</li>
      * </ul>
-     * </p>
      */
     private String riskLevel;
 
     /**
-     * Constructeur par défaut requis pour la sérialisation/désérialisation JSON.
+     * Constructeur sans argument requis pour la (dé)sérialisation JSON.
      */
     public RiskAssessmentResponse() {
     }
 
     /**
-     * Constructeur complet pour initialiser toutes les propriétés.
+     * Constructeur complet.
      *
      * @param patientId identifiant du patient
      * @param firstName prénom du patient
@@ -73,100 +73,57 @@ public class RiskAssessmentResponse {
         this.riskLevel = riskLevel;
     }
 
-    /**
-     * Retourne l’identifiant du patient.
-     *
-     * @return identifiant du patient
-     */
+    /** @return identifiant du patient */
     public Long getPatientId() {
         return patientId;
     }
 
-    /**
-     * Définit l’identifiant du patient.
-     *
-     * @param patientId identifiant du patient
-     */
+    /** @param patientId identifiant du patient */
     public void setPatientId(Long patientId) {
         this.patientId = patientId;
     }
 
-    /**
-     * Retourne le prénom du patient.
-     *
-     * @return prénom du patient
-     */
+    /** @return prénom du patient */
     public String getFirstName() {
         return firstName;
     }
 
-    /**
-     * Définit le prénom du patient.
-     *
-     * @param firstName prénom du patient
-     */
+    /** @param firstName prénom du patient */
     public void setFirstName(String firstName) {
         this.firstName = firstName;
     }
 
-    /**
-     * Retourne le nom du patient.
-     *
-     * @return nom du patient
-     */
+    /** @return nom du patient */
     public String getLastName() {
         return lastName;
     }
 
-    /**
-     * Définit le nom du patient.
-     *
-     * @param lastName nom du patient
-     */
+    /** @param lastName nom du patient */
     public void setLastName(String lastName) {
         this.lastName = lastName;
     }
 
-    /**
-     * Retourne l’âge du patient.
-     *
-     * @return âge du patient
-     */
+    /** @return âge du patient */
     public int getAge() {
         return age;
     }
 
-    /**
-     * Définit l’âge du patient.
-     *
-     * @param age âge du patient
-     */
+    /** @param age âge du patient */
     public void setAge(int age) {
         this.age = age;
     }
 
-    /**
-     * Retourne le niveau de risque évalué.
-     *
-     * @return niveau de risque
-     */
+    /** @return niveau de risque évalué */
     public String getRiskLevel() {
         return riskLevel;
     }
 
-    /**
-     * Définit le niveau de risque évalué.
-     *
-     * @param riskLevel niveau de risque
-     */
+    /** @param riskLevel niveau de risque évalué */
     public void setRiskLevel(String riskLevel) {
         this.riskLevel = riskLevel;
     }
 
     /**
-     * Fournit une représentation textuelle de l’objet, utile pour
-     * le débogage et le logging.
-     *
      * @return représentation textuelle de la réponse de risque
      */
     @Override

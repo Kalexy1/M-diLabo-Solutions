@@ -3,12 +3,13 @@ package com.medilabo.riskassessment.dto;
 import java.time.LocalDate;
 
 /**
- * Représente un patient tel qu’il est reçu depuis le microservice
+ * DTO représentant un patient tel qu’il est fourni par le microservice
  * <strong>patient-service</strong>.
+ *
  * <p>
- * Ce DTO est utilisé par le microservice <strong>risk-assessment-service</strong>
- * pour calculer le niveau de risque de diabète à partir des informations
- * personnelles du patient.
+ * Ce modèle est utilisé par le microservice
+ * <strong>risk-assessment-service</strong> pour calculer le niveau de risque
+ * de diabète à partir des informations personnelles du patient.
  * </p>
  */
 public class PatientDTO {
@@ -29,7 +30,7 @@ public class PatientDTO {
     private String lastName;
 
     /**
-     * Sexe du patient (ex. : "M" ou "F").
+     * Sexe du patient (par exemple : "M", "F").
      */
     private String gender;
 
@@ -39,18 +40,18 @@ public class PatientDTO {
     private LocalDate birthDate;
 
     /**
-     * Constructeur par défaut (nécessaire à la désérialisation JSON).
+     * Constructeur sans argument requis pour la désérialisation JSON.
      */
     public PatientDTO() {}
 
     /**
-     * Constructeur complet du DTO patient.
+     * Constructeur complet.
      *
-     * @param id         identifiant du patient
-     * @param firstName  prénom du patient
-     * @param lastName   nom du patient
-     * @param birthDate  date de naissance du patient
-     * @param gender     sexe du patient
+     * @param id identifiant du patient
+     * @param firstName prénom du patient
+     * @param lastName nom du patient
+     * @param birthDate date de naissance du patient
+     * @param gender sexe du patient
      */
     public PatientDTO(Long id, String firstName, String lastName, LocalDate birthDate, String gender) {
         this.id = id;
@@ -135,7 +136,7 @@ public class PatientDTO {
     /**
      * Retourne la date de naissance du patient.
      *
-     * @return date de naissance du patient
+     * @return date de naissance
      */
     public LocalDate getBirthDate() {
         return birthDate;
@@ -144,7 +145,7 @@ public class PatientDTO {
     /**
      * Définit la date de naissance du patient.
      *
-     * @param birthDate date de naissance du patient
+     * @param birthDate date de naissance
      */
     public void setBirthDate(LocalDate birthDate) {
         this.birthDate = birthDate;

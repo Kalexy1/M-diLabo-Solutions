@@ -15,25 +15,19 @@ logging:
     com.medilabo.riskassessment: DEBUG
 
 # ==============================
-#   Base URL de la Gateway (DNS Docker)
-# ==============================
-gateway:
-  base-url: ${GATEWAY_BASE_URL:http://gateway-service:8080}
-
-# ==============================
-#   URLs des autres microservices via la Gateway
+#   URLs des autres microservices en DOCKER (sans Gateway)
 # ==============================
 patients:
   api:
-    base: ${PATIENT_API_BASE:/api/patients}
-    url: ${PATIENT_API_BASE_URL:${gateway.base-url}${patients.api.base}}
+    url: ${PATIENT_API_BASE_URL:http://patient-service:8081/api/patients}
 
 notes:
   api:
-    base: ${NOTE_API_BASE:/api/notes}
-    url: ${NOTE_API_BASE_URL:${gateway.base-url}${notes.api.base}}
+    url: ${NOTE_API_BASE_URL:http://note-service:8082/api/notes}
 
-# (facultatif) si ce service publie /api/risk et que tu veux un self-link homogène
+# Tu peux garder ça si tu exposes aussi /api/risk via le Gateway
+gateway:
+  base-url: ${GATEWAY_BASE_URL:http://gateway-service:8080}
 risk:
   api:
     base: ${RISK_API_BASE:/api/risk}
@@ -48,14 +42,10 @@ jwt:
   audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
   ttl-seconds: ${JWT_TTL_SECONDS:43200}
 
-# ✅ IMPORTANT : pour SecurityConfig (@Value("${security.jwt.secret}"))
 security:
   jwt:
     secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
 
-# ==============================
-#   Actuator
-# ==============================
 management:
   endpoints:
     web:
