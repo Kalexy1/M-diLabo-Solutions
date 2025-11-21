@@ -60,7 +60,7 @@ class NoteServiceTest {
 
     @Test
     void getById_shouldReturnNote_whenExists() {
-        Long id = 10L;
+        String id = "10";
         Note note = new Note();
         note.setId(id);
         note.setContent("Found");
@@ -76,7 +76,7 @@ class NoteServiceTest {
 
     @Test
     void getById_shouldThrow_whenNotFound() {
-        Long id = 99L;
+        String id = "99";
         when(noteRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () -> noteService.getById(id));
@@ -84,7 +84,7 @@ class NoteServiceTest {
 
     @Test
     void update_shouldModifyContent_andTouchUpdatedAt() {
-        Long id = 5L;
+        String id = "5";
         Note existing = new Note();
         existing.setId(id);
         existing.setPatientId(9L);
@@ -102,6 +102,7 @@ class NoteServiceTest {
         Note updated = noteService.update(toUpdate);
 
         assertEquals("New content", updated.getContent());
+        assertNotNull(updated.getUpdatedAt());
         assertTrue(updated.getUpdatedAt().isAfter(updated.getCreatedAt()));
         verify(noteRepository, times(1)).findById(id);
         verify(noteRepository, times(1)).save(any(Note.class));
@@ -109,7 +110,7 @@ class NoteServiceTest {
 
     @Test
     void delete_shouldCallRepositoryDelete() {
-        Long id = 123L;
+        String id = "123";
 
         noteService.delete(id);
 

@@ -15,41 +15,37 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.medilabo.noteservice.model.Note;
 import com.medilabo.noteservice.service.NoteService;
-import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Contrôleur REST du microservice NoteService.
- * <p>
- * Gère les opérations CRUD sur les notes médicales associées aux patients.
- * Tous les endpoints sont sécurisés et accessibles uniquement aux utilisateurs
- * ayant le rôle {@code PRATICIEN}.
- * </p>
+ *
+ * <p>Gère les opérations CRUD sur les notes médicales associées aux patients.
+ * Toutes les routes exposées sont situées sous {@code /api/notes}.</p>
  */
 @RestController
 @RequestMapping("/api/notes")
 public class NoteController {
 
     /**
-     * Service de gestion des notes médicales.
+     * Service métier responsable de la gestion des notes médicales.
      */
     private final NoteService service;
 
     /**
-     * Constructeur du contrôleur de notes.
+     * Construit un contrôleur permettant d'exposer les opérations liées aux notes.
      *
-     * @param service le service métier utilisé pour gérer les notes
+     * @param service service métier de gestion des notes
      */
     public NoteController(NoteService service) {
         this.service = service;
     }
 
     /**
-     * Récupère toutes les notes associées à un patient donné.
+     * Récupère toutes les notes associées à un patient.
      *
-     * @param patientId l’identifiant du patient
-     * @return la liste des notes liées à ce patient
+     * @param patientId identifiant du patient
+     * @return liste des notes liées au patient
      */
-    @PreAuthorize("hasRole('PRATICIEN')")
     @GetMapping("/patient/{patientId}")
     public List<Note> findByPatient(@PathVariable Long patientId) {
         return service.findByPatientId(patientId);
@@ -58,20 +54,23 @@ public class NoteController {
     /**
      * Récupère une note spécifique à partir de son identifiant.
      *
-     * @param id l’identifiant de la note
-     * @return la note correspondante
+     * @param id identifiant de la note
+     * @return note correspondante
      */
     @GetMapping("/{id}")
-    public Note getOne(@PathVariable Long id) {
+    public Note getOne(@PathVariable String id) {
         return service.getById(id);
     }
 
     /**
      * Crée une nouvelle note pour un patient donné.
      *
-     * @param patientId l’identifiant du patient concerné
-     * @param payload   la note à créer
-     * @return la note nouvellement créée
+     * <p>L'identifiant de la note est remis à {@code null} afin de laisser la base
+     * de données en générer un nouveau.</p>
+     *
+     * @param patientId identifiant du patient concerné
+     * @param payload   contenu de la nouvelle note
+     * @return la note créée
      */
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/patient/{patientId}")
@@ -84,12 +83,12 @@ public class NoteController {
     /**
      * Met à jour une note existante.
      *
-     * @param id      l’identifiant de la note à mettre à jour
-     * @param payload les nouvelles données de la note
+     * @param id identifiant de la note à mettre à jour
+     * @param payload données de la note modifiée
      * @return la note mise à jour
      */
     @PutMapping("/{id}")
-    public Note update(@PathVariable Long id, @RequestBody Note payload) {
+    public Note update(@PathVariable String id, @RequestBody Note payload) {
         payload.setId(id);
         return service.update(payload);
     }
@@ -97,11 +96,11 @@ public class NoteController {
     /**
      * Supprime une note à partir de son identifiant.
      *
-     * @param id l’identifiant de la note à supprimer
+     * @param id identifiant de la note à supprimer
      */
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable String id) {
         service.delete(id);
     }
 }

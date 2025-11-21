@@ -14,10 +14,28 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Configuration de la sécurité du microservice NoteService.
+ *
+ * <p>Cette configuration active :</p>
+ * <ul>
+ *   <li>un mode stateless pour les sessions,</li>
+ *   <li>la désactivation du CSRF,</li>
+ *   <li>l'authentification obligatoire sur les endpoints {@code /api/**},</li>
+ *   <li>un Resource Server JWT pour la validation des tokens.</li>
+ * </ul>
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    /**
+     * Configure la chaîne de filtres de sécurité.
+     *
+     * @param http l'objet {@link HttpSecurity} à configurer
+     * @return la chaîne de filtres {@link SecurityFilterChain} appliquée à l'application
+     * @throws Exception en cas d'erreur lors de la configuration
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -32,6 +50,12 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Déclare un {@link JwtDecoder} capable de valider les JWT signés avec une clé HMAC.
+     *
+     * @param secret la clé secrète utilisée pour la signature des JWT
+     * @return un décodeur JWT configuré avec la clé donnée
+     */
     @Bean
     public JwtDecoder jwtDecoder(@Value("${security.jwt.secret}") String secret) {
         SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");

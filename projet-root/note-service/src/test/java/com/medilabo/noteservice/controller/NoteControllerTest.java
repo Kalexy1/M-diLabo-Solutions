@@ -36,7 +36,7 @@ class NoteControllerTest {
     @BeforeEach
     void setup() {
         sample = new Note();
-        sample.setId(1L);
+        sample.setId("1");   // ★ ID maintenant en String
         sample.setPatientId(99L);
         sample.setContent("Vertiges");
         sample.setCreatedAt(Instant.now());
@@ -58,14 +58,14 @@ class NoteControllerTest {
     @Test
     @WithMockUser
     void getOne_shouldReturnNote() throws Exception {
-        when(noteService.getById(1L)).thenReturn(sample);
+        when(noteService.getById("1")).thenReturn(sample);
 
         mockMvc.perform(get("/api/notes/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").value("Vertiges"))
                 .andExpect(jsonPath("$.patientId").value(99));
 
-        verify(noteService, times(1)).getById(1L);
+        verify(noteService, times(1)).getById("1");
     }
 
     @Test
@@ -82,8 +82,9 @@ class NoteControllerTest {
 
         var captor = ArgumentCaptor.forClass(Note.class);
         verify(noteService).save(captor.capture());
+
         assertThat(captor.getValue().getPatientId()).isEqualTo(99L);
-        assertThat(captor.getValue().getId()).isNull();
+        assertThat(captor.getValue().getId()).isNull();  // ★ car ID assigné par Mongo
     }
 
     @Test
@@ -100,7 +101,8 @@ class NoteControllerTest {
 
         var captor = ArgumentCaptor.forClass(Note.class);
         verify(noteService).update(captor.capture());
-        assertThat(captor.getValue().getId()).isEqualTo(1L);
+
+        assertThat(captor.getValue().getId()).isEqualTo("1"); // ★ ID String
     }
 
     @Test
@@ -109,6 +111,6 @@ class NoteControllerTest {
         mockMvc.perform(delete("/api/notes/1").with(csrf()))
                 .andExpect(status().isNoContent());
 
-        verify(noteService, times(1)).delete(1L);
+        verify(noteService, times(1)).delete("1"); // ★ ID String
     }
 }
