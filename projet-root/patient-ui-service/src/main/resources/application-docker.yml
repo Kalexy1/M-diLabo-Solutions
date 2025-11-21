@@ -1,0 +1,69 @@
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: patient-ui-service
+  thymeleaf:
+    cache: ${THYMELEAF_CACHE:true}
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
+      - org.springframework.boot.autoconfigure.sql.init.SqlInitializationAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+
+# ==============================
+# JWT (doit matcher Gateway / services)
+# ==============================
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# ==============================
+# Base URL de la Gateway (réseau Docker)
+# ==============================
+gateway:
+  base-url: ${GATEWAY_BASE_URL:http://gateway-service:8080}
+
+# ==============================
+# UI appelle les APIs VIA la Gateway
+# ==============================
+patients:
+  api:
+    url: ${PATIENT_API_BASE_URL:${gateway.base-url}/api/patients}
+
+notes:
+  api:
+    url: ${NOTE_API_BASE_URL:${gateway.base-url}/api/notes}
+
+risk:
+  api:
+    url: ${RISK_API_BASE_URL:${gateway.base-url}/api/risk}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    com.medilabo.patientui: INFO
+
+# ==============================
+# Clé lue par SecurityConfig (@Value("${security.jwt.secret}"))
+# ==============================
+security:
+  jwt:
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}

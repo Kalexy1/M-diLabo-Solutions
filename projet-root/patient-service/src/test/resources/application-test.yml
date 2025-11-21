@@ -1,12 +1,50 @@
 spring:
+  main:
+    allow-bean-definition-overriding: true
+
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:mem:patientdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
     driver-class-name: org.h2.Driver
     username: sa
     password:
+
   jpa:
     hibernate:
       ddl-auto: create-drop
-    database-platform: org.hibernate.dialect.H2Dialect
-  thymeleaf:
-    cache: false
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+
+  # On empêche toute initialisation SQL automatique en test
+  sql:
+    init:
+      mode: never
+
+  flyway:
+    enabled: false
+
+  liquibase:
+    enabled: false
+
+# -------------------------------------------------------------------------
+#   JWT DE TEST — nécessaire pour éviter l’erreur de SecurityConfig
+# -------------------------------------------------------------------------
+
+# Ton ancienne section (tu peux la garder)
+jwt:
+  secret: test-secret
+  issuer: test-issuer
+  audience: test-audience
+  ttl-seconds: 3600
+
+# 👉 SECTION CRUCIALE : celle que ton SecurityConfig attend réellement
+security:
+  jwt:
+    secret: test-secret
+
+# -------------------------------------------------------------------------
+
+logging:
+  level:
+    org.springframework.security: WARN
+    com.medilabo.patientservice: DEBUG

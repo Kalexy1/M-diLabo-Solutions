@@ -2,121 +2,127 @@ package com.medilabo.patientservice.service;
 
 import com.medilabo.patientservice.model.Patient;
 import com.medilabo.patientservice.repository.PatientRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class PatientServiceTest {
 
-    @Mock
-    private PatientRepository repository;
-
-    @InjectMocks
     private PatientService service;
+    private PatientRepository repo;
 
-    @Test
-    void getAll_returnsList() {
-        when(repository.findAll()).thenReturn(List.of(new Patient()));
+    private Patient existing;
 
-        List<Patient> result = service.getAll();
+    @BeforeEach
+    void setup() {
+        repo = mock(PatientRepository.class);
+        service = new PatientService(repo);
 
-        assertThat(result).hasSize(1);
-        verify(repository).findAll();
-    }
-
-    @Test
-    void getById_found() {
-        Patient patient = new Patient();
-        when(repository.findById(1L)).thenReturn(Optional.of(patient));
-
-        Optional<Patient> result = service.getById(1L);
-
-        assertThat(result).contains(patient);
-        verify(repository).findById(1L);
-    }
-
-    @Test
-    void getById_notFound() {
-        when(repository.findById(1L)).thenReturn(Optional.empty());
-
-        Optional<Patient> result = service.getById(1L);
-
-        assertThat(result).isEmpty();
-        verify(repository).findById(1L);
-    }
-
-    @Test
-    void create_savesPatient() {
-        Patient patient = new Patient();
-        when(repository.save(patient)).thenReturn(patient);
-
-        Patient result = service.create(patient);
-
-        assertThat(result).isEqualTo(patient);
-        verify(repository).save(patient);
-    }
-
-    @Test
-    void update_found() {
-        Patient existing = new Patient();
+        existing = new Patient();
         existing.setId(1L);
-        existing.setPrenom("Alice");
-        Patient update = new Patient();
-        update.setPrenom("Bob");
-        update.setNom("Durand");
-        update.setGenre("M");
-        update.setDateNaissance(LocalDate.of(1990,1,1));
-        update.setAdresse("1 rue test");
-        update.setTelephone("0102030405");
-
-        when(repository.findById(1L)).thenReturn(Optional.of(existing));
-        when(repository.save(existing)).thenAnswer(invocation -> invocation.getArgument(0));
-
-        Optional<Patient> result = service.update(1L, update);
-
-        assertThat(result).isPresent();
-        assertThat(result.get().getPrenom()).isEqualTo("Bob");
-        verify(repository).save(existing);
+        existing.setFirstName("Marie");
+        existing.setLastName("Curie");
+        existing.setBirthDate(LocalDate.of(1867, 11, 7));
+        existing.setGender("F");
+        existing.setAddress(null);
+        existing.setPhone(null);
     }
 
     @Test
-    void update_notFound() {
-        Patient update = new Patient();
-        when(repository.findById(1L)).thenReturn(Optional.empty());
+    void findAll_returnsAllPatients() {
+        when(repo.findAll()).thenReturn(List.of(existing));
 
-        Optional<Patient> result = service.update(1L, update);
+        List<Patient> patients = service.findAll();
 
-        assertThat(result).isEmpty();
-        verify(repository, never()).save(any());
+        assertThat(patients).hasSize(1);
+        verify(repo).findAll();
     }
 
     @Test
-    void delete_found() {
-        when(repository.existsById(1L)).thenReturn(true);
+    void getById_returnsPatient_whenExists() {
+        when(repo.findById(1L)).thenReturn(Optional.of(existing));
 
-        boolean result = service.delete(1L);
+        Patient p = service.getById(1L);
 
-        assertThat(result).isTrue();
-        verify(repository).deleteById(1L);
+        assertThat(p).isEqualTo(existing);
+        verify(repo).findById(1L);
     }
 
     @Test
-    void delete_notFound() {
-        when(repository.existsById(1L)).thenReturn(false);
+    void getById_throws_whenNotFound() {
+        when(repo.findById(99L)).thenReturn(Optional.empty());
 
-        boolean result = service.delete(1L);
+        assertThatThrownBy(() -> service.getById(99L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("99");
 
-        assertThat(result).isFalse();
-        verify(repository, never()).deleteById(anyLong());
+        verify(repo).findById(99L);
+    }
+
+    @Test
+    void create_savesAndReturnsPatient() {
+        when(repo.save(any(Patient.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Patient payload = new Patient();
+        payload.setFirstName("Marie");
+        payload.setLastName("Curie");
+        payload.setBirthDate(LocalDate.of(1867, 11, 7));
+        payload.setGender("F");
+        payload.setAddress("Paris");
+        payload.setPhone("0102030405");
+
+        Patient saved = service.create(payload);
+
+        assertThat(saved.getLastName()).isEqualTo("Curie");
+        verify(repo).save(payload);
+    }
+
+    @Test
+    void update_updatesFields_whenExists() {
+        when(repo.findById(1L)).thenReturn(Optional.of(existing));
+        when(repo.save(any(Patient.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Patient payload = new Patient();
+        payload.setFirstName("Marie-Sklodowska");
+        payload.setLastName("Curie");
+        payload.setBirthDate(LocalDate.of(1867, 11, 7));
+        payload.setGender("F");
+        payload.setAddress("Paris");
+        payload.setPhone("0102030405");
+
+        Patient updated = service.update(1L, payload);
+
+        assertThat(updated.getFirstName()).isEqualTo("Marie-Sklodowska");
+        assertThat(updated.getAddress()).isEqualTo("Paris");
+        assertThat(updated.getPhone()).isEqualTo("0102030405");
+
+        verify(repo).findById(1L);
+        verify(repo).save(any(Patient.class));
+    }
+
+    @Test
+    void update_throws_whenNotFound() {
+        when(repo.findById(42L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update(42L, existing))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("42");
+
+        verify(repo).findById(42L);
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    void delete_callsRepositoryDelete() {
+        service.delete(1L);
+        verify(repo).deleteById(1L);
     }
 }

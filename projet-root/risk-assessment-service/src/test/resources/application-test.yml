@@ -1,0 +1,14 @@
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+
+server:
+  port: 0
+
+PATIENT_API_BASE_URL: http://localhost:8080/api/patients
+NOTE_API_BASE_URL: http://localhost:8080/api/notes
+JWT_SECRET: test-secret

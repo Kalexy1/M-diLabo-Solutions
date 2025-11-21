@@ -2,53 +2,118 @@ package com.medilabo.noteservice.service;
 
 import com.medilabo.noteservice.model.Note;
 import com.medilabo.noteservice.repository.NoteRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
 
-@ExtendWith(MockitoExtension.class)
 class NoteServiceTest {
 
-    @Mock
+    private NoteService noteService;
     private NoteRepository noteRepository;
 
-    @InjectMocks
-    private NoteService noteService;
-
-    @Test
-    void getNotesByPatient_returnsNotes() {
-        List<Note> notes = Arrays.asList(new Note(), new Note());
-        when(noteRepository.findByPatientId(1)).thenReturn(notes);
-
-        List<Note> result = noteService.getNotesByPatient(1);
-
-        assertThat(result).hasSize(2);
-        verify(noteRepository).findByPatientId(1);
+    @BeforeEach
+    void setUp() {
+        noteRepository = mock(NoteRepository.class);
+        noteService = new NoteService(noteRepository);
     }
 
     @Test
-    void addNote_savesNote() {
+    void save_shouldPersistNote_andSetTimestamps() {
         Note note = new Note();
-        when(noteRepository.save(note)).thenReturn(note);
+        note.setPatientId(1L);
+        note.setContent("Test");
 
-        Note result = noteService.addNote(note);
+        when(noteRepository.save(any(Note.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThat(result).isEqualTo(note);
-        verify(noteRepository).save(note);
+        Note result = noteService.save(note);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getPatientId());
+        assertEquals("Test", result.getContent());
+        assertNotNull(result.getCreatedAt());
+        assertNotNull(result.getUpdatedAt());
+        verify(noteRepository, times(1)).save(any(Note.class));
     }
 
     @Test
-    void deleteAll_removesAllNotes() {
-        noteService.deleteAll();
+    void findByPatientId_shouldReturnList() {
+        Long patientId = 1L;
+        Note n = new Note();
+        n.setPatientId(patientId);
+        n.setContent("Note A");
 
-        verify(noteRepository).deleteAll();
+        when(noteRepository.findByPatientId(patientId)).thenReturn(List.of(n));
+
+        List<Note> result = noteService.findByPatientId(patientId);
+
+        assertEquals(1, result.size());
+        assertEquals("Note A", result.get(0).getContent());
+        verify(noteRepository, times(1)).findByPatientId(patientId);
+    }
+
+    @Test
+    void getById_shouldReturnNote_whenExists() {
+        String id = "10";
+        Note note = new Note();
+        note.setId(id);
+        note.setContent("Found");
+
+        when(noteRepository.findById(id)).thenReturn(Optional.of(note));
+
+        Note result = noteService.getById(id);
+
+        assertNotNull(result);
+        assertEquals("Found", result.getContent());
+        verify(noteRepository, times(1)).findById(id);
+    }
+
+    @Test
+    void getById_shouldThrow_whenNotFound() {
+        String id = "99";
+        when(noteRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> noteService.getById(id));
+    }
+
+    @Test
+    void update_shouldModifyContent_andTouchUpdatedAt() {
+        String id = "5";
+        Note existing = new Note();
+        existing.setId(id);
+        existing.setPatientId(9L);
+        existing.setContent("Old");
+        existing.setCreatedAt(Instant.now().minusSeconds(3600));
+        existing.setUpdatedAt(existing.getCreatedAt());
+
+        when(noteRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(noteRepository.save(any(Note.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Note toUpdate = new Note();
+        toUpdate.setId(id);
+        toUpdate.setContent("New content");
+
+        Note updated = noteService.update(toUpdate);
+
+        assertEquals("New content", updated.getContent());
+        assertNotNull(updated.getUpdatedAt());
+        assertTrue(updated.getUpdatedAt().isAfter(updated.getCreatedAt()));
+        verify(noteRepository, times(1)).findById(id);
+        verify(noteRepository, times(1)).save(any(Note.class));
+    }
+
+    @Test
+    void delete_shouldCallRepositoryDelete() {
+        String id = "123";
+
+        noteService.delete(id);
+
+        verify(noteRepository, times(1)).deleteById(id);
     }
 }

@@ -1,9 +1,59 @@
 server:
-  port: 8083
+  port: ${SERVER_PORT:8082}
+  forward-headers-strategy: framework  # propage X-Forwarded-* depuis la Gateway
 
 spring:
+  application:
+    name: note-service
+
   data:
     mongodb:
-      host: ${SPRING_DATA_MONGODB_HOST}
-      port: ${SPRING_DATA_MONGODB_PORT}
-      database: ${SPRING_DATA_MONGODB_DATABASE}
+      # Connexion MongoDB locale
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/notesdb}
+
+  # CORS natif Spring Boot (autorise la Gateway locale)
+  mvc:
+    cors:
+      mappings:
+        "[/api/**]":
+          allowed-origins: "http://localhost:8080"
+          allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+          allowed-headers: "Authorization,Content-Type"
+          exposed-headers: "Location"
+          allow-credentials: true
+
+# ==============================
+# JWT partagé avec tout l’écosystème
+# ==============================
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# ✅ Section attendue par SecurityConfig (@Value("${security.jwt.secret}"))
+security:
+  jwt:
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+
+# ==============================
+# Actuator (monitoring)
+# ==============================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# ==============================
+# Logging
+# ==============================
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.data.mongodb: INFO
+    org.springframework.web: INFO
+    com.medilabo.noteservice: DEBUG

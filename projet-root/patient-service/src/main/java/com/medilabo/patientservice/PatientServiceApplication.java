@@ -8,29 +8,32 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /**
- * Classe principale du microservice Patient Service.
- * <p>
- * Cette classe lance l'application Spring Boot.
- * Elle configure également un {@link ObjectMapper} capable de gérer les types Java 8 comme {@code LocalDate}.
- * </p>
+ * Point d'entrée principal du microservice <strong>patient-service</strong>.
+ *
+ * <p>Initialise l'application Spring Boot et fournit un {@link ObjectMapper}
+ * configuré pour gérer correctement la sérialisation et la désérialisation
+ * des types Java Time (ex. {@code LocalDate}, {@code LocalDateTime}) grâce au
+ * module {@link JavaTimeModule}.</p>
  */
 @SpringBootApplication
 public class PatientServiceApplication {
 
     /**
-     * Méthode principale qui démarre l'application Spring Boot.
+     * Démarre l'application Spring Boot du microservice patient-service.
      *
-     * @param args les arguments passés en ligne de commande
+     * @param args arguments de la ligne de commande
      */
     public static void main(String[] args) {
         SpringApplication.run(PatientServiceApplication.class, args);
     }
 
     /**
-     * Fournit un bean {@link ObjectMapper} configuré avec le module {@link JavaTimeModule}
-     * pour la sérialisation/désérialisation des dates Java 8 (comme {@code LocalDate}).
+     * Crée un {@link ObjectMapper} configuré avec {@link JavaTimeModule}.
      *
-     * @return un {@link ObjectMapper} personnalisé
+     * <p>Permet de prendre en charge les types temporels de Java 8 lors de la
+     * sérialisation et de la désérialisation JSON.</p>
+     *
+     * @return un {@link ObjectMapper} prêt à l'emploi pour les types Java Time
      */
     @Bean
     public ObjectMapper objectMapper() {

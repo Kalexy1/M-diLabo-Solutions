@@ -1,59 +1,106 @@
 package com.medilabo.noteservice.controller;
 
-import com.medilabo.noteservice.model.Note;
-import com.medilabo.noteservice.service.NoteService;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.medilabo.noteservice.model.Note;
+import com.medilabo.noteservice.service.NoteService;
+
 /**
- * Contrôleur REST pour la gestion des notes médicales des patients.
- * <p>
- * Ce contrôleur permet de récupérer les notes associées à un patient
- * et d'en ajouter de nouvelles.
- * </p>
- * <p>
- * Toutes les routes sont accessibles sous le préfixe <code>/notes</code>.
- * </p>
+ * Contrôleur REST du microservice NoteService.
+ *
+ * <p>Gère les opérations CRUD sur les notes médicales associées aux patients.
+ * Toutes les routes exposées sont situées sous {@code /api/notes}.</p>
  */
 @RestController
-@RequestMapping("/notes")
+@RequestMapping("/api/notes")
 public class NoteController {
-    /**
-     * Constructeur injectant le {@link NoteRepository}.
-     *
-     * @param repository le repository de gestion des notes
-     */
-    private final NoteService noteService;
 
     /**
-     * Constructeur injectant le {@link NoteService}.
-     *
-     * @param noteService service de gestion des notes
+     * Service métier responsable de la gestion des notes médicales.
      */
-    public NoteController(NoteService noteService) {
-        this.noteService = noteService;
+    private final NoteService service;
+
+    /**
+     * Construit un contrôleur permettant d'exposer les opérations liées aux notes.
+     *
+     * @param service service métier de gestion des notes
+     */
+    public NoteController(NoteService service) {
+        this.service = service;
     }
 
     /**
-     * Récupère toutes les notes liées à un patient donné.
+     * Récupère toutes les notes associées à un patient.
      *
-     * @param patientId l'identifiant du patient
-     * @return une liste des notes du patient
+     * @param patientId identifiant du patient
+     * @return liste des notes liées au patient
      */
     @GetMapping("/patient/{patientId}")
-    public List<Note> getNotesByPatient(@PathVariable Integer patientId) {
-        return noteService.getNotesByPatient(patientId);
+    public List<Note> findByPatient(@PathVariable Long patientId) {
+        return service.findByPatientId(patientId);
     }
 
     /**
-     * Enregistre une nouvelle note médicale pour un patient.
+     * Récupère une note spécifique à partir de son identifiant.
      *
-     * @param note la note à ajouter
-     * @return la note enregistrée
+     * @param id identifiant de la note
+     * @return note correspondante
      */
-    @PostMapping
-    public Note addNote(@RequestBody Note note) {
-        return noteService.addNote(note);
+    @GetMapping("/{id}")
+    public Note getOne(@PathVariable String id) {
+        return service.getById(id);
+    }
+
+    /**
+     * Crée une nouvelle note pour un patient donné.
+     *
+     * <p>L'identifiant de la note est remis à {@code null} afin de laisser la base
+     * de données en générer un nouveau.</p>
+     *
+     * @param patientId identifiant du patient concerné
+     * @param payload   contenu de la nouvelle note
+     * @return la note créée
+     */
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping("/patient/{patientId}")
+    public Note create(@PathVariable Long patientId, @RequestBody Note payload) {
+        payload.setId(null);
+        payload.setPatientId(patientId);
+        return service.save(payload);
+    }
+
+    /**
+     * Met à jour une note existante.
+     *
+     * @param id identifiant de la note à mettre à jour
+     * @param payload données de la note modifiée
+     * @return la note mise à jour
+     */
+    @PutMapping("/{id}")
+    public Note update(@PathVariable String id, @RequestBody Note payload) {
+        payload.setId(id);
+        return service.update(payload);
+    }
+
+    /**
+     * Supprime une note à partir de son identifiant.
+     *
+     * @param id identifiant de la note à supprimer
+     */
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable String id) {
+        service.delete(id);
     }
 }

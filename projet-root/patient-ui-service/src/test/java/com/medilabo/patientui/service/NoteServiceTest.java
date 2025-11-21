@@ -1,73 +1,118 @@
 package com.medilabo.patientui.service;
 
+import com.medilabo.patientui.model.Note;
+import com.medilabo.patientui.web.JwtCookieUtil;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.DefaultUriBuilderFactory;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
+import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 class NoteServiceTest {
 
-    private NoteService noteService;
-    private MockRestServiceServer mockServer;
     private RestTemplate restTemplate;
+    private MockRestServiceServer server;
+    private NoteService noteService;
 
     @BeforeEach
     void setUp() {
-        restTemplate = new RestTemplate(new SimpleClientHttpRequestFactory());
-        noteService = new NoteService() {
-            @Override
-            public List<Map<String, Object>> getNotesByPatientId(Long patientId) {
-                return restTemplate.getForObject("http://note-service:8083/notes/patient/" + patientId, List.class);
-            }
+        restTemplate = new RestTemplate();
+        restTemplate.setUriTemplateHandler(
+                new DefaultUriBuilderFactory("http://example.test/api/notes")
+        );
 
-            @Override
-            public void ajouterNote(Long patientId, String contenu) {
-                Map<String, Object> note = Map.of("patientId", patientId, "contenu", contenu);
-                restTemplate.postForObject("http://note-service:8083/notes", note, Void.class);
-            }
-        };
-        mockServer = MockRestServiceServer.createServer(restTemplate);
+        server = MockRestServiceServer.bindTo(restTemplate).build();
+        noteService = new NoteService(restTemplate);
     }
 
     @Test
-    void getNotesByPatientId_shouldReturnListOfNotes() {
-        String jsonResponse = """
+    void findByPatient_returnsList_and_sendsAuthorization() {
+        String json = """
             [
-                {"patientId":1,"contenu":"note 1"},
-                {"patientId":1,"contenu":"note 2"}
+              {"id":"1","patientId":99,"content":"Vertiges"},
+              {"id":"2","patientId":99,"content":"Taille 172cm"}
             ]
         """;
 
-        mockServer.expect(requestTo("http://note-service:8083/notes/patient/1"))
-                .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
+        server.expect(once(),
+                      requestTo("http://example.test/api/notes/patient/99"))
+              .andExpect(method(org.springframework.http.HttpMethod.GET))
+              .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer jwt-123"))
+              .andExpect(header(HttpHeaders.COOKIE, JwtCookieUtil.DEFAULT_COOKIE_NAME + "=jwt-123"))
+              .andRespond(withStatus(HttpStatus.OK)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .body(json));
 
-        List<Map<String, Object>> notes = noteService.getNotesByPatientId(1L);
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setCookies(new Cookie("JWT_TOKEN", "jwt-123"));
 
+        List<Note> notes = noteService.findByPatient(99L, req);
+
+        server.verify();
         assertThat(notes).hasSize(2);
-        assertThat(notes.get(0)).containsEntry("contenu", "note 1");
-
-        mockServer.verify();
+        assertThat(notes.get(0).getId()).isEqualTo("1");
+        assertThat(notes.get(0).getPatientId()).isEqualTo(99L);
+        assertThat(notes.get(0).getContent()).isEqualTo("Vertiges");
     }
 
     @Test
-    void ajouterNote_shouldPostNoteToService() {
-        mockServer.expect(requestTo("http://note-service:8083/notes"))
-                .andExpect(method(org.springframework.http.HttpMethod.POST))
-                .andExpect(jsonPath("$.patientId").value(1))
-                .andExpect(jsonPath("$.contenu").value("test note"))
-                .andRespond(withSuccess());
+    void findByPatient_emptyBody_returnsEmptyList() {
+        server.expect(once(),
+                      requestTo("http://example.test/api/notes/patient/123"))
+              .andExpect(method(org.springframework.http.HttpMethod.GET))
+              .andRespond(withStatus(HttpStatus.OK)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .body("[]"));
 
-        noteService.ajouterNote(1L, "test note");
+        MockHttpServletRequest req = new MockHttpServletRequest();
 
-        mockServer.verify();
+        List<Note> notes = noteService.findByPatient(123L, req);
+
+        server.verify();
+        assertThat(notes).isEmpty();
+    }
+
+    @Test
+    void createForPatient_returnsCreatedNote() {
+        String json = """
+            {"id":"1001","patientId":77,"content":"Nouvelle note"}
+        """;
+
+        server.expect(once(),
+                      requestTo("http://example.test/api/notes/patient/77"))
+              .andExpect(method(org.springframework.http.HttpMethod.POST))
+              .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer jwt-x"))
+              .andExpect(header(HttpHeaders.COOKIE, JwtCookieUtil.DEFAULT_COOKIE_NAME + "=jwt-x"))
+              .andExpect(header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE))
+              .andRespond(withStatus(HttpStatus.CREATED)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .body(json));
+
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setCookies(new Cookie("JWT_TOKEN", "jwt-x"));
+
+        Note payload = new Note();
+        payload.setContent("Nouvelle note");
+
+        Note saved = noteService.createForPatient(77L, payload, req);
+
+        server.verify();
+        assertThat(saved.getId()).isEqualTo("1001");
+        assertThat(saved.getPatientId()).isEqualTo(77L);
+        assertThat(saved.getContent()).isEqualTo("Nouvelle note");
     }
 }

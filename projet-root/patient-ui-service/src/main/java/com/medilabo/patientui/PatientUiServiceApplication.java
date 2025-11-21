@@ -4,22 +4,28 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Classe principale de l'application Patient UI Service.
- * <p>
- * Cette classe lance l'application Spring Boot côté interface utilisateur,
- * permettant l'affichage et la gestion des données patients via une interface web.
- * </p>
+ * Point d'entrée principal du microservice <strong>patient-ui-service</strong>.
+ *
+ * <p>Ce service gère l’interface utilisateur (UI) de l’application Medilabo.
+ * Il s'appuie sur Spring Boot et Thymeleaf pour afficher et manipuler les données
+ * des patients via des vues rendues côté serveur.</p>
+ *
+ * <p><strong>Fonctionnalités principales :</strong></p>
+ * <ul>
+ *   <li>démarre un serveur Tomcat embarqué grâce à Spring Boot ;</li>
+ *   <li>charge les vues Thymeleaf situées dans le répertoire {@code templates/} ;</li>
+ *   <li>sert de passerelle UI entre l'utilisateur et les microservices backend.</li>
+ * </ul>
  */
 @SpringBootApplication
 public class PatientUiServiceApplication {
 
     /**
-     * Point d'entrée principal de l'application.
+     * Méthode principale démarrant l'application Spring Boot.
      *
-     * @param args les arguments passés en ligne de commande
+     * @param args arguments fournis au lancement de l'application
      */
     public static void main(String[] args) {
         SpringApplication.run(PatientUiServiceApplication.class, args);
     }
-
 }

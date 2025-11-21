@@ -2,8 +2,8 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <head>
-  <title>Liste des patients</title>
   <meta charset="UTF-8">
+  <title>Liste des patients</title>
   <style>
     button.link {
       background: none;
@@ -14,18 +14,41 @@
       font-size: 1em;
       padding: 0;
     }
+    .disabled-feature {
+      color: grey;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Message de bienvenue -->
   <p>
     Bienvenue <span sec:authentication="name"></span> !
-    <a th:href="@{/logout}">Se déconnecter</a>
+    <!-- Logout en POST vers /auth/logout -->
+    <form th:action="@{/auth/logout}" method="post" style="display:inline;">
+      <button type="submit" class="link">Se déconnecter</button>
+    </form>
   </p>
 
   <h1>Liste des patients</h1>
-  <a href="/patients/new">Ajouter un patient</a>
+
+  <!-- Ajouter un patient : visible pour tous, mais seulement cliquable pour les ORGANISATEUR -->
+  <div>
+    <span>Ajouter un patient : </span>
+
+    <!-- Version cliquable si ORGANISATEUR -->
+    <span sec:authorize="hasRole('ORGANISATEUR')">
+      <a th:href="@{/ui/patients/new}">[Accéder]</a>
+    </span>
+
+    <!-- Version non cliquable si pas ORGANISATEUR -->
+    <span sec:authorize="!hasRole('ORGANISATEUR')" class="disabled-feature">
+      [Réservé aux organisateurs]
+    </span>
+  </div>
+
+  <br/>
+
   <table border="1">
     <thead>
       <tr>
@@ -42,39 +65,78 @@
     </thead>
     <tbody>
       <tr th:each="p : ${patients}">
-        <td th:text="${p.nom}"></td>
-        <td th:text="${p.prenom}"></td>
-        <td th:text="${p.dateNaissance}"></td>
-        <td th:text="${p.genre}"></td>
-        <td th:text="${p.adresse}"></td>
-        <td th:text="${p.telephone}"></td>
+        <td th:text="${p.lastName}"></td>
+        <td th:text="${p.firstName}"></td>
+        <td th:text="${p.birthDate}"></td>
+        <td th:text="${p.gender}"></td>
+        <td th:text="${p.address}"></td>
+        <td th:text="${p.phone}"></td>
 
+        <!-- Colonne Actions (Modifier / Supprimer) -->
         <td>
-          <form th:action="@{'/patients/edit/' + ${p.id}}" method="get" style="display:inline;">
+          <!-- ===== Modifier ===== -->
+          <!-- Bouton actif pour ORGANISATEUR -->
+          <form th:action="@{'/ui/patients/edit/' + ${p.id}}"
+                method="get"
+                style="display:inline;"
+                sec:authorize="hasRole('ORGANISATEUR')">
             <button class="link" type="submit">Modifier</button>
           </form>
-          <form th:action="@{'/patients/delete/' + ${p.id}}" method="get" style="display:inline;"
+
+          <!-- Message pour les autres rôles -->
+          <span sec:authorize="!hasRole('ORGANISATEUR')" class="disabled-feature">
+            Modifier (réservé aux organisateurs)
+          </span>
+          <br/>
+
+          <!-- ===== Supprimer ===== -->
+          <!-- Bouton actif pour ORGANISATEUR -->
+          <form th:action="@{'/ui/patients/delete/' + ${p.id}}"
+                method="post"
+                style="display:inline;"
+                sec:authorize="hasRole('ORGANISATEUR')"
                 onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce patient ?');">
             <button class="link" type="submit">Supprimer</button>
           </form>
-          <form th:action="@{'/patients/' + ${p.id} + '/report/pdf'}" method="get" style="display:inline;">
-            <button class="link" type="submit">Télécharger le PDF</button>
-          </form>
+
+          <!-- Message pour les autres rôles -->
+          <span sec:authorize="!hasRole('ORGANISATEUR')" class="disabled-feature">
+            Supprimer (réservé aux organisateurs)
+          </span>
         </td>
 
+        <!-- Colonne Notes -->
         <td>
-          <form th:action="@{'/patients/' + ${p.id} + '/notes'}" method="get">
+          <!-- Bouton actif pour PRATICIEN -->
+          <form th:action="@{'/ui/patients/' + ${p.id} + '/notes'}"
+                method="get"
+                sec:authorize="hasRole('PRATICIEN')">
             <button class="link" type="submit">Voir les notes</button>
           </form>
+
+          <!-- Message pour les autres rôles -->
+          <span sec:authorize="!hasRole('PRATICIEN')" class="disabled-feature">
+            Notes (réservées aux praticiens)
+          </span>
         </td>
 
+        <!-- Colonne Risque diabète -->
         <td>
-          <form th:action="@{'/patients/' + ${p.id} + '/risk'}" method="get">
+          <!-- Bouton actif pour PRATICIEN -->
+          <form th:action="@{'/ui/patients/' + ${p.id} + '/risk'}"
+                method="get"
+                sec:authorize="hasRole('PRATICIEN')">
             <button class="link" type="submit">Voir le rapport</button>
           </form>
+
+          <!-- Message pour les autres rôles -->
+          <span sec:authorize="!hasRole('PRATICIEN')" class="disabled-feature">
+            Rapport (réservé aux praticiens)
+          </span>
         </td>
       </tr>
     </tbody>
   </table>
+
 </body>
 </html>

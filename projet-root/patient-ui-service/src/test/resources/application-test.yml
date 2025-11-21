@@ -1,12 +1,20 @@
 spring:
-  datasource:
-    url: jdbc:h2:mem:testdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop  # ⚠️ change "none" en "create-drop"
-    database-platform: org.hibernate.dialect.H2Dialect
+  main:
+    allow-bean-definition-overriding: true
   thymeleaf:
-    cache: false
+    cache: true
+    check-template-location: false
+
+patients:
+  api:
+    url: http://example.test/api/patients
+notes:
+  api:
+    url: http://example.test/api/notes
+risk:
+  api:
+    url: http://example.test/api/risk
+
+security:
+  jwt:
+    secret: test-test-test-test-test-test-1234567890

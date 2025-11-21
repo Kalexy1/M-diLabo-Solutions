@@ -1,0 +1,78 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: patient-service
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/patientdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin.01234}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+
+# ==============================
+# Base URL de la Gateway (réseau Docker)
+# ==============================
+gateway:
+  base-url: ${GATEWAY_BASE_URL:http://gateway-service:8080}
+
+# ==============================
+# URLs d’accès via la Gateway
+# (si jamais ce service appelle d’autres APIs)
+# ==============================
+patients:
+  api:
+    base: ${PATIENT_API_BASE:/api/patients}
+    url: ${PATIENT_API_BASE_URL:${gateway.base-url}${patients.api.base}}
+
+notes:
+  api:
+    base: ${NOTE_API_BASE:/api/notes}
+    url: ${NOTE_API_BASE_URL:${gateway.base-url}${notes.api.base}}
+
+risk:
+  api:
+    base: ${RISK_API_BASE:/api/risk}
+    url: ${RISK_API_BASE_URL:${gateway.base-url}${risk.api.base}}
+
+# ==============================
+# JWT partagé avec tout l’écosystème
+# ==============================
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# ✅ DOIT exister (utilisé par SecurityConfig)
+security:
+  jwt:
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+
+# ==============================
+# Actuator
+# ==============================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# ==============================
+# Logging
+# ==============================
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.springframework.data.jpa: INFO
+    com.medilabo.patientservice: DEBUG

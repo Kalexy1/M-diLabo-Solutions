@@ -2,86 +2,99 @@ package com.medilabo.patientservice.controller;
 
 import com.medilabo.patientservice.model.Patient;
 import com.medilabo.patientservice.service.PatientService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
  * Contrôleur REST pour la gestion des patients.
- * <p>
- * Fournit des endpoints pour les opérations CRUD sur les entités {@link Patient}.
- * </p>
+ *
+ * <p>Expose les opérations CRUD permettant de créer, lire, mettre à jour
+ * et supprimer des patients. Toutes les routes se trouvent sous
+ * {@code /api/patients}.</p>
+ *
+ * <p>L'accès aux endpoints est généralement sécurisé par Spring Security
+ * et réservé aux utilisateurs possédant les rôles adéquats
+ * (tels que {@code ORGANISATEUR} ou {@code PRATICIEN}).</p>
  */
 @RestController
-@RequestMapping("/patients")
+@RequestMapping("/api/patients")
 public class PatientController {
 
-    @Autowired
-    private PatientService patientService;
+    /**
+     * Service métier gérant les opérations liées aux patients.
+     */
+    private final PatientService service;
 
     /**
-     * Récupère la liste de tous les patients.
+     * Construit un contrôleur de gestion des patients.
      *
-     * @return une liste de tous les {@link Patient}
+     * @param service service métier manipulant les entités {@link Patient}
      */
-    @GetMapping
-    public List<Patient> getAll() {
-        return patientService.getAll();
+    public PatientController(PatientService service) {
+        this.service = service;
     }
 
     /**
-     * Récupère un patient par son identifiant.
+     * Récupère tous les patients ou, si un paramètre de recherche est fourni,
+     * effectue une recherche par nom de famille.
      *
-     * @param id l'identifiant du patient à rechercher
-     * @return une réponse contenant le {@link Patient} trouvé ou un code 404 si non trouvé
+     * @param q fragment de nom à rechercher (optionnel)
+     * @return liste des patients correspondants
+     */
+    @GetMapping
+    public List<Patient> findAll(@RequestParam(value = "q", required = false) String q) {
+        if (q != null && !q.isBlank()) {
+            return service.searchByLastName(q);
+        }
+        return service.findAll();
+    }
+
+    /**
+     * Récupère un patient via son identifiant unique.
+     *
+     * @param id identifiant du patient
+     * @return patient correspondant
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Patient> getOne(@PathVariable Long id) {
-        return patientService.getById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public Patient getOne(@PathVariable Long id) {
+        return service.getById(id);
     }
 
     /**
      * Crée un nouveau patient dans la base de données.
      *
-     * @param patient l'objet {@link Patient} à créer
-     * @return le {@link Patient} sauvegardé
+     * @param payload données du patient à créer
+     * @return le patient nouvellement créé
      */
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
-    public Patient create(@RequestBody Patient patient) {
-        return patientService.create(patient);
+    public Patient create(@Valid @RequestBody Patient payload) {
+        return service.create(payload);
     }
 
     /**
-     * Met à jour un patient existant.
+     * Met à jour les informations d’un patient existant.
      *
-     * @param id l'identifiant du patient à mettre à jour
-     * @param updatedPatient les nouvelles informations du patient
-     * @return une réponse contenant le {@link Patient} mis à jour ou un code 404 si non trouvé
+     * @param id identifiant du patient à modifier
+     * @param payload données modifiées du patient
+     * @return le patient mis à jour
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Patient> update(@PathVariable Long id, @RequestBody Patient updatedPatient) {
-        return patientService.update(id, updatedPatient)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public Patient update(@PathVariable Long id, @Valid @RequestBody Patient payload) {
+        return service.update(id, payload);
     }
 
     /**
-     * Supprime un patient par son identifiant.
+     * Supprime un patient à partir de son identifiant.
      *
-     * @param id l'identifiant du patient à supprimer
-     * @return une réponse 200 OK si le patient a été supprimé, ou 404 Not Found s'il n'existe pas
+     * @param id identifiant du patient à supprimer
      */
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (patientService.delete(id)) {
-            return ResponseEntity.ok().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
     }
-
 }

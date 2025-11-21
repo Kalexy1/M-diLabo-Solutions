@@ -1,66 +1,116 @@
 package com.medilabo.noteservice.controller;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.medilabo.noteservice.model.Note;
 import com.medilabo.noteservice.service.NoteService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+import java.time.Instant;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(NoteController.class)
 class NoteControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private NoteService service;
+    @MockBean
+    private NoteService noteService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    private Note note;
+    private Note sample;
 
     @BeforeEach
     void setup() {
-        service.deleteAll();
-        Note newNote = new Note();
-        newNote.setPatientId(42);
-        newNote.setContenu("Microalbumine détectée");
-        note = service.addNote(newNote);
+        sample = new Note();
+        sample.setId("1");   // ★ ID maintenant en String
+        sample.setPatientId(99L);
+        sample.setContent("Vertiges");
+        sample.setCreatedAt(Instant.now());
+        sample.setUpdatedAt(Instant.now());
     }
 
     @Test
-    void testFindByPatientId() throws Exception {
-        mockMvc.perform(get("/notes/patient/" + note.getPatientId()))
+    @WithMockUser
+    void findByPatient_shouldReturnList() throws Exception {
+        when(noteService.findByPatientId(99L)).thenReturn(List.of(sample));
+
+        mockMvc.perform(get("/api/notes/patient/99"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].contenu").value("Microalbumine détectée"));
+                .andExpect(jsonPath("$[0].content").value("Vertiges"));
+
+        verify(noteService, times(1)).findByPatientId(99L);
     }
 
     @Test
-    void testAddNote() throws Exception {
-        Note newNote = new Note();
-        newNote.setPatientId(99);
-        newNote.setContenu("Cholestérol élevé");
+    @WithMockUser
+    void getOne_shouldReturnNote() throws Exception {
+        when(noteService.getById("1")).thenReturn(sample);
 
-        mockMvc.perform(post("/notes")
+        mockMvc.perform(get("/api/notes/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value("Vertiges"))
+                .andExpect(jsonPath("$.patientId").value(99));
+
+        verify(noteService, times(1)).getById("1");
+    }
+
+    @Test
+    @WithMockUser
+    void create_shouldSaveNote_andReturnCreated() throws Exception {
+        when(noteService.save(any(Note.class))).thenReturn(sample);
+
+        mockMvc.perform(post("/api/notes/patient/99")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newNote)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.contenu").value("Cholestérol élevé"));
+                        .content("{\"content\":\"Nouvelle note\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.content").value("Vertiges"));
+
+        var captor = ArgumentCaptor.forClass(Note.class);
+        verify(noteService).save(captor.capture());
+
+        assertThat(captor.getValue().getPatientId()).isEqualTo(99L);
+        assertThat(captor.getValue().getId()).isNull();  // ★ car ID assigné par Mongo
     }
 
+    @Test
+    @WithMockUser
+    void update_shouldModifyNote() throws Exception {
+        when(noteService.update(any(Note.class))).thenReturn(sample);
+
+        mockMvc.perform(put("/api/notes/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"Mise à jour\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value("Vertiges"));
+
+        var captor = ArgumentCaptor.forClass(Note.class);
+        verify(noteService).update(captor.capture());
+
+        assertThat(captor.getValue().getId()).isEqualTo("1"); // ★ ID String
+    }
+
+    @Test
+    @WithMockUser
+    void delete_shouldReturnNoContent() throws Exception {
+        mockMvc.perform(delete("/api/notes/1").with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(noteService, times(1)).delete("1"); // ★ ID String
+    }
 }

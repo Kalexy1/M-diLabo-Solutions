@@ -3,85 +3,111 @@ package com.medilabo.patientservice.service;
 import com.medilabo.patientservice.model.Patient;
 import com.medilabo.patientservice.repository.PatientRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Service métier pour la gestion des {@link Patient}.
- * <p>
- * Ce service centralise l'accès au {@link PatientRepository} afin d'éviter son utilisation
- * directe par les contrôleurs et d'y regrouper la logique métier liée aux patients.
- * </p>
+ * Service métier gérant la gestion des patients.
+ *
+ * <p>Ce service centralise les opérations de création, consultation,
+ * modification et suppression des entités {@link Patient}. Il s'appuie sur
+ * le {@link PatientRepository} pour interagir avec la base de données.</p>
  */
 @Service
+@Transactional(readOnly = true)
 public class PatientService {
 
-    private final PatientRepository patientRepository;
+    /**
+     * Repository d'accès aux données des patients.
+     */
+    private final PatientRepository repo;
 
-    public PatientService(PatientRepository patientRepository) {
-        this.patientRepository = patientRepository;
+    /**
+     * Construit le service de gestion des patients.
+     *
+     * @param repo repository JPA pour les entités {@link Patient}
+     */
+    public PatientService(PatientRepository repo) {
+        this.repo = repo;
     }
 
     /**
      * Récupère la liste de tous les patients.
      *
-     * @return liste de patients
+     * @return liste complète des patients enregistrés
      */
-    public List<Patient> getAll() {
-        return patientRepository.findAll();
+    public List<Patient> findAll() {
+        return repo.findAll();
     }
 
     /**
-     * Recherche un patient par son identifiant.
+     * Récupère un patient via son identifiant.
      *
      * @param id identifiant du patient
-     * @return patient correspondant s'il existe
+     * @return patient correspondant
+     * @throws IllegalArgumentException si aucun patient n’est trouvé
      */
-    public Optional<Patient> getById(Long id) {
-        return patientRepository.findById(id);
+    public Patient getById(Long id) {
+        return repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Patient introuvable: " + id));
+    }
+
+    /**
+     * Recherche les patients dont le nom de famille contient une sous-chaîne donnée,
+     * sans tenir compte de la casse.
+     *
+     * @param lastNamePart fragment du nom de famille à rechercher
+     * @return liste des patients correspondants
+     */
+    public List<Patient> searchByLastName(String lastNamePart) {
+        return repo.findByLastNameContainingIgnoreCase(
+                lastNamePart == null ? "" : lastNamePart.trim()
+        );
     }
 
     /**
      * Crée un nouveau patient.
      *
-     * @param patient patient à sauvegarder
-     * @return patient sauvegardé
+     * <p>L'identifiant est remis à {@code null} afin de forcer la création
+     * d'une nouvelle entrée en base.</p>
+     *
+     * @param p patient à enregistrer
+     * @return patient créé et sauvegardé
      */
-    public Patient create(Patient patient) {
-        return patientRepository.save(patient);
+    @Transactional
+    public Patient create(Patient p) {
+        p.setId(null);
+        return repo.save(p);
     }
 
     /**
-     * Met à jour les informations d'un patient existant.
+     * Met à jour un patient existant avec les nouvelles informations fournies.
      *
-     * @param id identifiant du patient
-     * @param updatedPatient informations à mettre à jour
-     * @return patient mis à jour s'il existe
+     * @param id identifiant du patient à mettre à jour
+     * @param payload nouvelles données du patient
+     * @return patient mis à jour
+     * @throws IllegalArgumentException si le patient n’existe pas
      */
-    public Optional<Patient> update(Long id, Patient updatedPatient) {
-        return patientRepository.findById(id).map(patient -> {
-            patient.setPrenom(updatedPatient.getPrenom());
-            patient.setNom(updatedPatient.getNom());
-            patient.setDateNaissance(updatedPatient.getDateNaissance());
-            patient.setGenre(updatedPatient.getGenre());
-            patient.setAdresse(updatedPatient.getAdresse());
-            patient.setTelephone(updatedPatient.getTelephone());
-            return patientRepository.save(patient);
-        });
+    @Transactional
+    public Patient update(Long id, Patient payload) {
+        Patient existing = getById(id);
+        existing.setFirstName(payload.getFirstName());
+        existing.setLastName(payload.getLastName());
+        existing.setBirthDate(payload.getBirthDate());
+        existing.setGender(payload.getGender());
+        existing.setAddress(payload.getAddress());
+        existing.setPhone(payload.getPhone());
+        return repo.save(existing);
     }
 
     /**
-     * Supprime un patient.
+     * Supprime un patient via son identifiant.
      *
-     * @param id identifiant du patient
-     * @return true si le patient a été supprimé
+     * @param id identifiant du patient à supprimer
      */
-    public boolean delete(Long id) {
-        if (patientRepository.existsById(id)) {
-            patientRepository.deleteById(id);
-            return true;
-        }
-        return false;
+    @Transactional
+    public void delete(Long id) {
+        repo.deleteById(id);
     }
 }

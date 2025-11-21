@@ -3,10 +3,13 @@ package com.medilabo.riskassessment.dto;
 import java.time.LocalDate;
 
 /**
- * DTO représentant un patient, utilisé pour transférer les données
- * depuis le microservice patient-service vers le microservice risk-assessment.
+ * DTO représentant un patient tel qu’il est fourni par le microservice
+ * <strong>patient-service</strong>.
+ *
  * <p>
- * Ces informations sont utilisées pour calculer l'âge du patient et déterminer le niveau de risque.
+ * Ce modèle est utilisé par le microservice
+ * <strong>risk-assessment-service</strong> pour calculer le niveau de risque
+ * de diabète à partir des informations personnelles du patient.
  * </p>
  */
 public class PatientDTO {
@@ -19,90 +22,132 @@ public class PatientDTO {
     /**
      * Prénom du patient.
      */
-    private String prenom;
+    private String firstName;
 
     /**
-     * Nom du patient.
+     * Nom de famille du patient.
      */
-    private String nom;
+    private String lastName;
 
     /**
-     * Genre du patient (ex. : "M", "F").
+     * Sexe du patient (par exemple : "M", "F").
      */
-    private String genre;
+    private String gender;
 
     /**
      * Date de naissance du patient.
      */
-    private LocalDate dateNaissance;
+    private LocalDate birthDate;
 
     /**
-     * @return l'identifiant du patient
+     * Constructeur sans argument requis pour la désérialisation JSON.
+     */
+    public PatientDTO() {}
+
+    /**
+     * Constructeur complet.
+     *
+     * @param id identifiant du patient
+     * @param firstName prénom du patient
+     * @param lastName nom du patient
+     * @param birthDate date de naissance du patient
+     * @param gender sexe du patient
+     */
+    public PatientDTO(Long id, String firstName, String lastName, LocalDate birthDate, String gender) {
+        this.id = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.birthDate = birthDate;
+        this.gender = gender;
+    }
+
+    /**
+     * Retourne l’identifiant du patient.
+     *
+     * @return identifiant du patient
      */
     public Long getId() {
         return id;
     }
 
     /**
-     * @param id l'identifiant du patient à définir
+     * Définit l’identifiant du patient.
+     *
+     * @param id identifiant du patient
      */
     public void setId(Long id) {
         this.id = id;
     }
 
     /**
-     * @return le prénom du patient
+     * Retourne le prénom du patient.
+     *
+     * @return prénom du patient
      */
-    public String getPrenom() {
-        return prenom;
+    public String getFirstName() {
+        return firstName;
     }
 
     /**
-     * @param prenom le prénom du patient à définir
+     * Définit le prénom du patient.
+     *
+     * @param firstName prénom du patient
      */
-    public void setPrenom(String prenom) {
-        this.prenom = prenom;
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
     }
 
     /**
-     * @return le nom du patient
+     * Retourne le nom de famille du patient.
+     *
+     * @return nom du patient
      */
-    public String getNom() {
-        return nom;
+    public String getLastName() {
+        return lastName;
     }
 
     /**
-     * @param nom le nom du patient à définir
+     * Définit le nom de famille du patient.
+     *
+     * @param lastName nom du patient
      */
-    public void setNom(String nom) {
-        this.nom = nom;
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     /**
-     * @return le genre du patient
+     * Retourne le sexe du patient.
+     *
+     * @return sexe du patient
      */
-    public String getGenre() {
-        return genre;
+    public String getGender() {
+        return gender;
     }
 
     /**
-     * @param genre le genre du patient à définir
+     * Définit le sexe du patient.
+     *
+     * @param gender sexe du patient
      */
-    public void setGenre(String genre) {
-        this.genre = genre;
+    public void setGender(String gender) {
+        this.gender = gender;
     }
 
     /**
-     * @return la date de naissance du patient
+     * Retourne la date de naissance du patient.
+     *
+     * @return date de naissance
      */
-    public LocalDate getDateNaissance() {
-        return dateNaissance;
+    public LocalDate getBirthDate() {
+        return birthDate;
     }
 
     /**
-     * @param dateNaissance la date de naissance à définir
+     * Définit la date de naissance du patient.
+     *
+     * @param birthDate date de naissance
      */
-    public void setDateNaissance(LocalDate dateNaissance) {
-        this.dateNaissance = dateNaissance;
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
     }
 }

@@ -5,113 +5,165 @@ import com.medilabo.patientservice.model.Patient;
 import com.medilabo.patientservice.service.PatientService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@WebMvcTest(PatientController.class)
 class PatientControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private PatientService service;
+    @MockBean
+    private PatientService patientService;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private ObjectMapper mapper;
 
-    private Patient testPatient;
+    private Patient sample;
 
     @BeforeEach
-    void setUp() {
-        service.getAll().forEach(p -> service.delete(p.getId()));
-        testPatient = new Patient();
-        testPatient.setPrenom("Alice");
-        testPatient.setNom("Durand");
-        testPatient.setGenre("F");
-        testPatient.setDateNaissance(LocalDate.of(1995, 3, 15));
-        testPatient.setAdresse("7 rue du Test");
-        testPatient.setTelephone("0123456789");
+    void setup() {
+        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        mapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-        testPatient = service.create(testPatient);
+        sample = new Patient();
+        sample.setId(1L);
+        sample.setFirstName("Marie");
+        sample.setLastName("Curie");
+        sample.setBirthDate(LocalDate.of(1867, 11, 7));
+        sample.setGender("F");
+        sample.setAddress("Paris");
+        sample.setPhone("0102030405");
     }
 
+    // ---------- GET /api/patients ----------
+
     @Test
-    void testGetAll() throws Exception {
-        mockMvc.perform(get("/patients"))
+    @WithMockUser(roles = "PRATICIEN")
+    void findAll_shouldReturnListOfPatients() throws Exception {
+        when(patientService.findAll()).thenReturn(List.of(sample));
+
+        mockMvc.perform(get("/api/patients"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].nom").value("Durand"));
+                .andExpect(jsonPath("$[0].id").value(1L))
+                .andExpect(jsonPath("$[0].firstName").value("Marie"))
+                .andExpect(jsonPath("$[0].lastName").value("Curie"));
+
+        verify(patientService).findAll();
     }
 
     @Test
-    void testGetOne_found() throws Exception {
-        mockMvc.perform(get("/patients/" + testPatient.getId()))
+    @WithMockUser(roles = "PRATICIEN")
+    void findAll_shouldSearchByLastName_whenQueryProvided() throws Exception {
+        when(patientService.searchByLastName("Curie")).thenReturn(List.of(sample));
+
+        mockMvc.perform(get("/api/patients?q=Curie"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.prenom").value("Alice"));
+                .andExpect(jsonPath("$[0].lastName").value("Curie"));
+
+        verify(patientService).searchByLastName("Curie");
+        verify(patientService, never()).findAll();
     }
 
-    @Test
-    void testGetOne_notFound() throws Exception {
-        mockMvc.perform(get("/patients/9999"))
-                .andExpect(status().isNotFound());
-    }
+    // ---------- GET /api/patients/{id} ----------
 
     @Test
-    void testCreate() throws Exception {
-        Patient newPatient = new Patient();
-        newPatient.setPrenom("Bob");
-        newPatient.setNom("Martin");
-        newPatient.setGenre("M");
-        newPatient.setDateNaissance(LocalDate.of(1988, 5, 12));
-        newPatient.setAdresse("99 avenue test");
-        newPatient.setTelephone("0611223344");
+    @WithMockUser(roles = "PRATICIEN")
+    void getOne_shouldReturnPatient_whenFound() throws Exception {
+        when(patientService.getById(1L)).thenReturn(sample);
 
-        mockMvc.perform(post("/patients")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(newPatient)))
+        mockMvc.perform(get("/api/patients/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nom").value("Martin"));
+                .andExpect(jsonPath("$.firstName").value("Marie"))
+                .andExpect(jsonPath("$.lastName").value("Curie"))
+                .andExpect(jsonPath("$.gender").value("F"));
+
+        verify(patientService).getById(1L);
     }
 
-    @Test
-    void testUpdate_found() throws Exception {
-        testPatient.setAdresse("Nouvelle adresse");
+    // ---------- POST /api/patients ----------
 
-        mockMvc.perform(put("/patients/" + testPatient.getId())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(testPatient)))
+    @Test
+    @WithMockUser(roles = "ORGANISATEUR")
+    void create_shouldSaveAndReturnPatient_with201() throws Exception {
+        when(patientService.create(any(Patient.class))).thenReturn(sample);
+
+        Patient req = new Patient();
+        req.setFirstName("Marie");
+        req.setLastName("Curie");
+        req.setBirthDate(LocalDate.of(1867, 11, 7));
+        req.setGender("F");
+        req.setAddress("Paris");
+        req.setPhone("0102030405");
+
+        mockMvc.perform(post("/api/patients")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.lastName").value("Curie"));
+
+        ArgumentCaptor<Patient> captor = ArgumentCaptor.forClass(Patient.class);
+        verify(patientService).create(captor.capture());
+        assertThat(captor.getValue().getFirstName()).isEqualTo("Marie");
+        assertThat(captor.getValue().getId()).isNull();
+    }
+
+    // ---------- PUT /api/patients/{id} ----------
+
+    @Test
+    @WithMockUser(roles = "ORGANISATEUR")
+    void update_shouldModifyAndReturnUpdatedPatient() throws Exception {
+        Patient updated = new Patient();
+        updated.setId(1L);
+        updated.setFirstName("Marie-Sklodowska");
+        updated.setLastName("Curie");
+        updated.setBirthDate(LocalDate.of(1867, 11, 7));
+        updated.setGender("F");
+        updated.setAddress("Paris");
+        updated.setPhone("0102030405");
+
+        when(patientService.update(eq(1L), any(Patient.class))).thenReturn(updated);
+
+        mockMvc.perform(put("/api/patients/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(updated)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.adresse").value("Nouvelle adresse"));
+                .andExpect(jsonPath("$.firstName").value("Marie-Sklodowska"))
+                .andExpect(jsonPath("$.lastName").value("Curie"));
+
+        verify(patientService).update(eq(1L), any(Patient.class));
     }
 
-    @Test
-    void testUpdate_notFound() throws Exception {
-        mockMvc.perform(put("/patients/9999")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(testPatient)))
-                .andExpect(status().isNotFound());
-    }
+    // ---------- DELETE /api/patients/{id} ----------
 
     @Test
-    void testDelete_found() throws Exception {
-        mockMvc.perform(delete("/patients/" + testPatient.getId()))
-                .andExpect(status().isOk());
-    }
+    @WithMockUser(roles = "ORGANISATEUR")
+    void delete_shouldReturn204() throws Exception {
+        doNothing().when(patientService).delete(1L);
 
-    @Test
-    void testDelete_notFound() throws Exception {
-        mockMvc.perform(delete("/patients/9999"))
-                .andExpect(status().isNotFound());
+        mockMvc.perform(delete("/api/patients/1").with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(patientService).delete(1L);
     }
 }

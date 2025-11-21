@@ -1,0 +1,65 @@
+server: 
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework  # propage X-Forwarded-* depuis la Gateway
+
+spring:
+  application:
+    name: note-service
+
+  data:
+    mongodb:
+      # Connexion au conteneur Mongo défini dans docker-compose (nom de service: mongo-db)
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongo-db:27017/notesdb}
+
+  # (Facultatif) si tu utilises des pages d'erreurs custom, laisse tel quel
+  thymeleaf:
+    cache: true
+
+# ==============================
+# Sécurité / JWT partagé (HS256)
+# ==============================
+# Garder ces valeurs synchronisées entre Gateway, patient-service, risk-service, patient-ui-service
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# ✅ Section utilisée par SecurityConfig (@Value("${security.jwt.secret}"))
+security:
+  jwt:
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+
+# ==============================
+# CORS (autorise la Gateway à appeler ce service)
+# ==============================
+# Si tu configures CORS par un @Bean (CorsConfigurationSource) dans ton code, tu peux ignorer cette section.
+# Sinon, tu peux utiliser un WebMvcConfigurer qui lit ces propriétés, ou laisser permissif côté code.
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://gateway-service:8080,http://localhost:8080}
+  allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+  allowed-headers: ${CORS_ALLOWED_HEADERS:Authorization,Content-Type}
+  allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+  exposed-headers: ${CORS_EXPOSED_HEADERS:Location}
+
+# ==============================
+# Actuator (health, info)
+# ==============================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# ==============================
+# Logging
+# ==============================
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.data.mongodb: INFO
+    org.springframework.web: INFO
+    com.medilabo.noteservice: DEBUG

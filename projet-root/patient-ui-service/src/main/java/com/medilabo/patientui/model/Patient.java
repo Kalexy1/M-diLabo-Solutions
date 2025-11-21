@@ -1,146 +1,107 @@
 package com.medilabo.patientui.model;
 
-import jakarta.persistence.*;
 import java.time.LocalDate;
-import java.util.List;
 
 /**
- * Représente un patient dans l'application Patient UI.
- * <p>
- * Cette entité est stockée dans une base de données relationnelle et affichée
- * avec ses notes médicales dans l'interface utilisateur.
- * Les notes sont récupérées dynamiquement via un microservice externe et ne sont pas stockées localement.
- * </p>
+ * Représente un patient dans l’interface utilisateur.
+ *
+ * <p>Ce DTO (Data Transfer Object) est utilisé par le microservice
+ * <strong>patient-ui-service</strong> pour consommer les données exposées
+ * par le <strong>patient-service</strong> via la Gateway.</p>
+ *
+ * <p>Il reflète la structure du modèle de données du service patient, afin
+ * d'assurer une sérialisation/désérialisation correcte lors des appels REST.</p>
  */
-@Entity
 public class Patient {
 
-    /**
-     * Identifiant unique du patient (clé primaire).
-     */
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    /** Identifiant unique du patient. */
     private Long id;
 
-    /**
-     * Prénom du patient.
-     */
-    private String prenom;
+    /** Prénom du patient. */
+    private String firstName;
 
-    /**
-     * Nom de famille du patient.
-     */
-    private String nom;
+    /** Nom de famille du patient. */
+    private String lastName;
 
-    /**
-     * Date de naissance du patient.
-     */
-    private LocalDate dateNaissance;
+    /** Date de naissance du patient. */
+    private LocalDate birthDate;
 
-    /**
-     * Genre du patient (ex. : "M", "F").
-     */
-    private String genre;
+    /** Genre du patient (ex. "M", "F" ou autre). */
+    private String gender;
 
-    /**
-     * Adresse postale du patient.
-     */
-    private String adresse;
+    /** Adresse postale du patient (optionnelle). */
+    private String address;
 
-    /**
-     * Numéro de téléphone du patient.
-     */
-    private String telephone;
+    /** Numéro de téléphone du patient (optionnel). */
+    private String phone;
 
-    /**
-     * Liste des notes médicales du patient.
-     * <p>
-     * Cette liste n’est pas persistée dans la base de données. Elle est renseignée dynamiquement
-     * depuis le microservice note-service.
-     * </p>
-     */
-    @Transient
-    private List<Note> notes;
+    /** @return identifiant unique du patient */
+    public Long getId() {
+        return id;
+    }
 
-    // Getters et setters
+    /** @param id identifiant unique du patient */
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    /**
-     * @return l'identifiant du patient
-     */
-    public Long getId() { return id; }
+    /** @return prénom du patient */
+    public String getFirstName() {
+        return firstName;
+    }
 
-    /**
-     * @param id l'identifiant du patient à définir
-     */
-    public void setId(Long id) { this.id = id; }
+    /** @param firstName prénom du patient */
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
 
-    /**
-     * @return le prénom du patient
-     */
-    public String getPrenom() { return prenom; }
+    /** @return nom de famille du patient */
+    public String getLastName() {
+        return lastName;
+    }
 
-    /**
-     * @param prenom le prénom du patient à définir
-     */
-    public void setPrenom(String prenom) { this.prenom = prenom; }
+    /** @param lastName nom de famille du patient */
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
 
-    /**
-     * @return le nom du patient
-     */
-    public String getNom() { return nom; }
+    /** @return date de naissance du patient */
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
 
-    /**
-     * @param nom le nom du patient à définir
-     */
-    public void setNom(String nom) { this.nom = nom; }
+    /** @param birthDate date de naissance du patient */
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
 
-    /**
-     * @return la date de naissance du patient
-     */
-    public LocalDate getDateNaissance() { return dateNaissance; }
+    /** @return genre du patient */
+    public String getGender() {
+        return gender;
+    }
 
-    /**
-     * @param dateNaissance la date de naissance à définir
-     */
-    public void setDateNaissance(LocalDate dateNaissance) { this.dateNaissance = dateNaissance; }
+    /** @param gender genre du patient */
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
 
-    /**
-     * @return le genre du patient
-     */
-    public String getGenre() { return genre; }
+    /** @return adresse postale du patient */
+    public String getAddress() {
+        return address;
+    }
 
-    /**
-     * @param genre le genre du patient à définir
-     */
-    public void setGenre(String genre) { this.genre = genre; }
+    /** @param address adresse postale du patient */
+    public void setAddress(String address) {
+        this.address = address;
+    }
 
-    /**
-     * @return l'adresse du patient
-     */
-    public String getAdresse() { return adresse; }
+    /** @return numéro de téléphone du patient */
+    public String getPhone() {
+        return phone;
+    }
 
-    /**
-     * @param adresse l'adresse du patient à définir
-     */
-    public void setAdresse(String adresse) { this.adresse = adresse; }
-
-    /**
-     * @return le numéro de téléphone du patient
-     */
-    public String getTelephone() { return telephone; }
-
-    /**
-     * @param telephone le numéro de téléphone à définir
-     */
-    public void setTelephone(String telephone) { this.telephone = telephone; }
-
-    /**
-     * @return la liste des notes médicales du patient
-     */
-    public List<Note> getNotes() { return notes; }
-
-    /**
-     * @param notes la liste des notes à définir
-     */
-    public void setNotes(List<Note> notes) { this.notes = notes; }
+    /** @param phone numéro de téléphone du patient */
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
 }

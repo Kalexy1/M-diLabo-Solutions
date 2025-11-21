@@ -1,18 +1,77 @@
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
 
 spring:
   application:
     name: patient-service
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/patientdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin.01234}   # ⚠ Mets ton mot de passe local MySQL ici
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
-    database-platform: org.hibernate.dialect.MySQL8Dialect
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+
+# ==============================
+# Base URL du Gateway (en local)
+# ==============================
+gateway:
+  base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
+
+# ==============================
+# URLs d’accès via la Gateway (local)
+# ==============================
+patients:
+  api:
+    base: ${PATIENT_API_BASE:/api/patients}
+    url: ${PATIENT_API_BASE_URL:${gateway.base-url}${patients.api.base}}
+
+notes:
+  api:
+    base: ${NOTE_API_BASE:/api/notes}
+    url: ${NOTE_API_BASE_URL:${gateway.base-url}${notes.api.base}}
+
+risk:
+  api:
+    base: ${RISK_API_BASE:/api/risk}
+    url: ${RISK_API_BASE_URL:${gateway.base-url}${risk.api.base}}
+
+# ==============================
+# JWT partagé avec tout l’écosystème
+# ==============================
+jwt:
+  secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+  issuer: ${JWT_ISSUER:medilabo-auth}
+  audience: ${JWT_AUDIENCE:gateway,patient,note,risk}
+  ttl-seconds: ${JWT_TTL_SECONDS:43200}
+
+# ✅ Clé utilisée par SecurityConfig : @Value("${security.jwt.secret}")
+security:
+  jwt:
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
+
+# ==============================
+# Actuator (monitoring / health)
+# ==============================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# ==============================
+# Logging (niveau de log ajusté)
+# ==============================
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.springframework.data.jpa: INFO
+    com.medilabo.patientservice: DEBUG

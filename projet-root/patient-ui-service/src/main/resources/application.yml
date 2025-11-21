@@ -1,21 +1,71 @@
 server:
-  port: 8082
+  port: 8084
+  forward-headers-strategy: framework
 
 spring:
   application:
     name: patient-ui-service
-
-  datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    database-platform: org.hibernate.dialect.MySQL8Dialect
-
   thymeleaf:
     cache: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
+      - org.springframework.boot.autoconfigure.sql.init.SqlInitializationAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+
+# ==============================
+# JWT (doit matcher Gateway / services)
+# ==============================
+jwt:
+  secret: 0123456789abcdefghijklmnopqrstuvwxyz012345
+  issuer: medilabo-auth
+  audience: gateway,patient,note,risk
+  ttl-seconds: 43200
+
+# ==============================
+# Base URL de la Gateway en LOCAL
+# ==============================
+gateway:
+  base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
+
+# ==============================
+# UI appelle les APIs VIA la Gateway
+# ==============================
+patients:
+  api:
+    # utilisé par @Value("${patients.api.url}") dans PatientService
+    url: ${PATIENT_API_BASE_URL:${gateway.base-url}/api/patients}
+
+notes:
+  api:
+    url: ${NOTE_API_BASE_URL:${gateway.base-url}/api/notes}
+
+risk:
+  api:
+    url: ${RISK_API_BASE_URL:${gateway.base-url}/api/risk}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    com.medilabo.patientui: DEBUG
+
+# ==============================
+# Clé lue par SecurityConfig (@Value("${security.jwt.secret}"))
+# ==============================
+security:
+  jwt:
+    # on réutilise la même clé que jwt.secret, avec une valeur par défaut
+    secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
