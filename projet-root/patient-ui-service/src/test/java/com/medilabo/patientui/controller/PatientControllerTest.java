@@ -142,9 +142,11 @@ class PatientControllerTest {
 
         // risk.getRisk(Long, HttpServletRequest)
         RiskAssessmentResponse risk = new RiskAssessmentResponse();
-        risk.setPatientId(1);
-        risk.setRiskLevel("NONE");
-        risk.setTriggerCount(0);
+        risk.setPatientId(1L);          // <-- Long, pas int
+        risk.setFirstName("Bob");
+        risk.setLastName("Martin");
+        risk.setAge(42);
+        risk.setRiskLevel("None");      // valeur cohérente avec le service
         given(riskService.getRisk(eq(1L), any(HttpServletRequest.class))).willReturn(risk);
     }
 

@@ -4,22 +4,27 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * Contrôleur de gestion des routes d’accès et de redirection
+ * Contrôleur gérant les routes d'accès et les pages d'erreur
  * pour le microservice <strong>Patient UI</strong>.
  *
- * IMPORTANT :
- * - Le Gateway proxyfie /ui/** vers patient-ui en retirant le préfixe /ui.
- * - Donc les mappings internes ici NE doivent PAS commencer par /ui.
- * - En revanche, quand on renvoie une redirection au navigateur, on vise /ui/...,
- *   afin que le trafic repasse par la Gateway.
+ * <p>
+ * Les routes internes ne doivent pas commencer par <code>/ui</code>, car ce préfixe
+ * est ajouté par le Gateway lors du routage. En revanche, les redirections renvoyées
+ * au navigateur doivent viser des URLs commençant par <code>/ui</code> afin de repasser
+ * correctement par le Gateway.
+ * </p>
  */
 @Controller
 public class AuthController {
 
     /**
-     * Page "Accès refusé" pour l'UI.
-     * Mapping INTERNE sans /ui, car la Gateway appellera /access-denied.
-     * Le template attendu est access-denied.html.
+     * Affiche la page d'erreur "Accès refusé".
+     *
+     * <p>Cette route est appelée directement par le Gateway sous
+     * <code>/access-denied</code>, et renvoie le template
+     * <code>access-denied.html</code>.</p>
+     *
+     * @return le nom de la vue Thymeleaf à afficher
      */
     @GetMapping("/access-denied")
     public String accessDenied() {

@@ -30,16 +30,12 @@ class NoteServiceTest {
 
     @BeforeEach
     void setUp() {
-        // RestTemplate configuré comme dans AppConfig (rootUri = base URL de l’API notes)
         restTemplate = new RestTemplate();
         restTemplate.setUriTemplateHandler(
                 new DefaultUriBuilderFactory("http://example.test/api/notes")
         );
 
         server = MockRestServiceServer.bindTo(restTemplate).build();
-
-        // Le NoteService injecte normalement le bean "noteApiClient",
-        // mais en test on lui passe directement ce RestTemplate.
         noteService = new NoteService(restTemplate);
     }
 
@@ -47,14 +43,11 @@ class NoteServiceTest {
     void findByPatient_returnsList_and_sendsAuthorization() {
         String json = """
             [
-              {"id":1,"patientId":99,"content":"Vertiges"},
-              {"id":2,"patientId":99,"content":"Taille 172cm"}
+              {"id":"1","patientId":99,"content":"Vertiges"},
+              {"id":"2","patientId":99,"content":"Taille 172cm"}
             ]
         """;
 
-        // Avec rootUri = http://example.test/api/notes
-        // et path = "/patient/99", l’URL finale est :
-        // http://example.test/api/notes/patient/99
         server.expect(once(),
                       requestTo("http://example.test/api/notes/patient/99"))
               .andExpect(method(org.springframework.http.HttpMethod.GET))
@@ -71,7 +64,7 @@ class NoteServiceTest {
 
         server.verify();
         assertThat(notes).hasSize(2);
-        assertThat(notes.get(0).getId()).isEqualTo(1L);
+        assertThat(notes.get(0).getId()).isEqualTo("1");
         assertThat(notes.get(0).getPatientId()).isEqualTo(99L);
         assertThat(notes.get(0).getContent()).isEqualTo("Vertiges");
     }
@@ -86,7 +79,6 @@ class NoteServiceTest {
                       .body("[]"));
 
         MockHttpServletRequest req = new MockHttpServletRequest();
-        // pas de cookie, on teste juste le body vide
 
         List<Note> notes = noteService.findByPatient(123L, req);
 
@@ -97,7 +89,7 @@ class NoteServiceTest {
     @Test
     void createForPatient_returnsCreatedNote() {
         String json = """
-            {"id":1001,"patientId":77,"content":"Nouvelle note"}
+            {"id":"1001","patientId":77,"content":"Nouvelle note"}
         """;
 
         server.expect(once(),
@@ -119,7 +111,7 @@ class NoteServiceTest {
         Note saved = noteService.createForPatient(77L, payload, req);
 
         server.verify();
-        assertThat(saved.getId()).isEqualTo(1001L);
+        assertThat(saved.getId()).isEqualTo("1001");
         assertThat(saved.getPatientId()).isEqualTo(77L);
         assertThat(saved.getContent()).isEqualTo("Nouvelle note");
     }

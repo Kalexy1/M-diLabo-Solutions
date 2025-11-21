@@ -49,8 +49,8 @@
   <div sec:authorize="hasRole('PRATICIEN')">
     <h3>Ajouter une nouvelle note</h3>
 
-    <!-- IMPORTANT : on passe par /ui/notes pour repasser par le Gateway -->
-    <form th:action="@{/ui/notes}" method="post">
+    <!-- IMPORTANT : on passe par /ui/patients/{id}/notes pour repasser par le Gateway -->
+    <form th:action="@{'/ui/patients/' + ${patient.id} + '/notes'}" method="post">
 
       <!-- Pas de champ CSRF : sécurité assurée par JWT -->
 

@@ -14,12 +14,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Contrôleur UI (patient-ui-service).
+ * Contrôleur UI du microservice patient-ui-service.
  *
- * IMPORTANT :
- * - Le Gateway expose /ui/** au navigateur.
- * - Il supprime /ui avant de proxyfier vers patient-ui.
- *   Donc ici, les mappings commencent par /patients (sans /ui).
+ * <p>
+ * Les routes exposées par ce contrôleur sont appelées via le Gateway
+ * sous le préfixe {@code /ui/**}. Le Gateway retire ce préfixe avant
+ * de proxyfier vers patient-ui, de sorte qu'ici les mappings ne
+ * commencent pas par {@code /ui}.
+ * </p>
  */
 @Controller
 public class PatientController {
@@ -28,6 +30,13 @@ public class PatientController {
     private final NoteService notes;
     private final RiskService risk;
 
+    /**
+     * Construit le contrôleur UI en injectant les services nécessaires.
+     *
+     * @param patients service de gestion des patients
+     * @param notes    service de gestion des notes
+     * @param risk     service d'évaluation du risque de diabète
+     */
     public PatientController(PatientService patients, NoteService notes, RiskService risk) {
         this.patients = patients;
         this.notes = notes;
@@ -35,16 +44,31 @@ public class PatientController {
     }
 
     /**
-     * Page d'accueil interne.
-     * Appelée via /ui ou /ui/ côté navigateur, le Gateway enlève /ui et arrive ici sur "/" :
-     * on renvoie directement la liste des patients, sans redirection HTTP.
+     * Page d'accueil interne de l'UI.
+     *
+     * <p>
+     * Côté navigateur, la page est appelée via {@code /ui} ou {@code /ui/}.
+     * Le Gateway retire le préfixe {@code /ui} et route la requête vers
+     * ce mapping ({@code ""} ou {@code "/"}), qui renvoie directement
+     * la liste des patients.
+     * </p>
+     *
+     * @param model   modèle Thymeleaf
+     * @param request requête HTTP courante
+     * @return le nom de la vue affichant la liste des patients
      */
     @GetMapping({ "", "/" })
     public String home(Model model, HttpServletRequest request) {
         return listPatients(model, request);
     }
 
-    /** Liste des patients (mapping interne : /patients). */
+    /**
+     * Affiche la liste des patients.
+     *
+     * @param model   modèle Thymeleaf
+     * @param request requête HTTP courante
+     * @return le nom de la vue listant les patients
+     */
     @GetMapping("/patients")
     public String listPatients(Model model, HttpServletRequest request) {
         List<Patient> all = patients.findAll(request);
@@ -52,7 +76,12 @@ public class PatientController {
         return "patients";
     }
 
-    /** Formulaire d'ajout (template : add-patient.html). */
+    /**
+     * Affiche le formulaire d'ajout d'un patient.
+     *
+     * @param model modèle Thymeleaf
+     * @return le nom de la vue du formulaire d'ajout
+     */
     @GetMapping("/patients/new")
     public String showAddForm(Model model) {
         model.addAttribute("patient", new Patient());
@@ -60,11 +89,17 @@ public class PatientController {
     }
 
     /**
-     * Création d'un nouveau patient.
+     * Crée un nouveau patient.
      *
-     * IMPORTANT : on ne fait plus de "redirect:/ui/patients" pour éviter
-     * que le navigateur essaie d'appeler directement "patient-ui-service:8084".
-     * On crée, puis on recharge la liste et on renvoie la vue "patients".
+     * <p>
+     * Après création, la liste des patients est rechargée et renvoyée
+     * directement sous forme de vue, sans redirection HTTP.
+     * </p>
+     *
+     * @param payload données du patient à créer
+     * @param request requête HTTP courante
+     * @param model   modèle Thymeleaf
+     * @return le nom de la vue listant les patients
      */
     @PostMapping("/patients")
     public String createPatient(@ModelAttribute("patient") Patient payload,
@@ -73,13 +108,19 @@ public class PatientController {
 
         patients.create(payload, request);
 
-        // Recharge la liste et renvoie la même vue que listPatients()
         List<Patient> all = patients.findAll(request);
         model.addAttribute("patients", all);
         return "patients";
     }
 
-    /** Formulaire d'édition (template : edit-patient.html). */
+    /**
+     * Affiche le formulaire d'édition d'un patient existant.
+     *
+     * @param id      identifiant du patient à modifier
+     * @param model   modèle Thymeleaf
+     * @param request requête HTTP courante
+     * @return le nom de la vue d'édition
+     */
     @GetMapping("/patients/edit/{id}")
     public String showEditForm(@PathVariable Long id,
                                Model model,
@@ -90,11 +131,18 @@ public class PatientController {
     }
 
     /**
-     * Mise à jour d'un patient.
+     * Met à jour un patient existant.
      *
-     * Le template edit-patient.html envoie son formulaire vers /patients/update
-     * avec un champ hidden "id". On utilise donc cette route, pas /patients/{id}.
-     * Après mise à jour, on renvoie directement la liste.
+     * <p>
+     * Le formulaire d'édition envoie les données vers {@code /patients/update}
+     * avec un champ caché {@code id}. Après mise à jour, la liste des patients
+     * est rechargée et renvoyée.
+     * </p>
+     *
+     * @param payload données modifiées du patient
+     * @param request requête HTTP courante
+     * @param model   modèle Thymeleaf
+     * @return le nom de la vue listant les patients
      */
     @PostMapping("/patients/update")
     public String updatePatient(@ModelAttribute("patient") Patient payload,
@@ -111,10 +159,12 @@ public class PatientController {
     }
 
     /**
-     * Suppression d'un patient.
+     * Supprime un patient.
      *
-     * Le formulaire dans patients.html poste sur /patients/delete/{id}.
-     * Après suppression, on renvoie directement la liste.
+     * @param id      identifiant du patient à supprimer
+     * @param request requête HTTP courante
+     * @param model   modèle Thymeleaf
+     * @return le nom de la vue listant les patients
      */
     @PostMapping("/patients/delete/{id}")
     public String deletePatient(@PathVariable Long id,
@@ -129,11 +179,18 @@ public class PatientController {
     }
 
     /**
-     * Historique des notes d'un patient.
+     * Affiche l'historique des notes d'un patient.
      *
-     * Appelé depuis patients.html :
-     *   <form th:action="@{'/ui/patients/' + ${p.id} + '/notes'}" method="get">
-     * Le Gateway enlève /ui → ici on reçoit /patients/{id}/notes.
+     * <p>
+     * Côté navigateur, l'URL utilisée est de la forme
+     * {@code /ui/patients/{id}/notes}. Le Gateway supprime {@code /ui}
+     * et route ici sur {@code /patients/{id}/notes}.
+     * </p>
+     *
+     * @param id      identifiant du patient
+     * @param model   modèle Thymeleaf
+     * @param request requête HTTP courante
+     * @return le nom de la vue affichant les notes du patient
      */
     @GetMapping("/patients/{id}/notes")
     public String showPatientNotes(@PathVariable Long id,
@@ -148,11 +205,18 @@ public class PatientController {
     }
 
     /**
-     * Rapport de risque de diabète pour un patient.
+     * Affiche le rapport de risque de diabète pour un patient.
      *
-     * Appelé depuis patients.html :
-     *   <form th:action="@{'/ui/patients/' + ${p.id} + '/risk'}" method="get">
-     * Le Gateway enlève /ui → ici on reçoit /patients/{id}/risk.
+     * <p>
+     * L'URL appelée côté navigateur est {@code /ui/patients/{id}/risk}.
+     * Après suppression du préfixe {@code /ui} par le Gateway, la requête
+     * atteint ce mapping {@code /patients/{id}/risk}.
+     * </p>
+     *
+     * @param id      identifiant du patient
+     * @param model   modèle Thymeleaf
+     * @param request requête HTTP courante
+     * @return le nom de la vue présentant le rapport de risque
      */
     @GetMapping("/patients/{id}/risk")
     public String showRiskReport(@PathVariable Long id,
@@ -162,7 +226,43 @@ public class PatientController {
         RiskAssessmentResponse riskResponse = risk.getRisk(id, request);
 
         model.addAttribute("patient", patient);
-        model.addAttribute("risk", riskResponse); // doit s'appeler "risk" pour risk-report.html
+        model.addAttribute("risk", riskResponse);
         return "risk-report";
+    }
+
+    /**
+     * Ajoute une nouvelle note pour un patient.
+     *
+     * <p>
+     * Côté navigateur, le formulaire poste sur
+     * {@code /ui/patients/{patientId}/notes}. Le Gateway enlève
+     * {@code /ui} et la requête arrive ici sur
+     * {@code POST /patients/{patientId}/notes}.
+     * </p>
+     *
+     * @param patientId identifiant du patient concerné
+     * @param content   contenu de la note à ajouter
+     * @param request   requête HTTP courante
+     * @param model     modèle Thymeleaf
+     * @return le nom de la vue affichant les notes du patient
+     */
+    @PostMapping("/patients/{patientId}/notes")
+    public String addNote(@PathVariable Long patientId,
+                          @RequestParam("content") String content,
+                          HttpServletRequest request,
+                          Model model) {
+
+        Note note = new Note();
+        note.setContent(content);
+
+        notes.createForPatient(patientId, note, request);
+
+        Patient patient = patients.getOne(patientId, request);
+        List<Note> patientNotes = notes.findByPatient(patientId, request);
+
+        model.addAttribute("patient", patient);
+        model.addAttribute("notes", patientNotes);
+
+        return "patient-notes";
     }
 }

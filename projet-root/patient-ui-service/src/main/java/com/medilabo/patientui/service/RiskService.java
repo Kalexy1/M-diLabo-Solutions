@@ -11,21 +11,25 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Service UI consommant l’API RiskAssessment via RestTemplate.
+ * Service chargé de consommer l’API du microservice
+ * <strong>risk-assessment-service</strong> via la Gateway.
  *
- * Le RestTemplate injecté est celui nommé "riskApiClient", défini dans AppConfig :
+ * <p>
+ * Le {@link RestTemplate} injecté (bean <code>riskApiClient</code>)
+ * possède déjà l’URL de base configurée dans <code>application.yml</code>.
+ * Les appels effectués ici utilisent donc uniquement des chemins relatifs
+ * (ex. <code>"/{patientId}"</code>).
+ * </p>
  *
- *     @Bean("riskApiClient")
- *     public RestTemplate riskApiClient(@Value("${risk.api.url}") String url) {
- *         return restTemplateBase(url);
- *     }
- *
- * L’URL de base est donc déjà configurée et les appels ici utilisent
- * uniquement des chemins relatifs : "/{patientId}".
+ * <p>
+ * Les requêtes incluent automatiquement le JWT présent dans le cookie
+ * utilisateur afin de garantir l’authentification côté backend.
+ * </p>
  */
 @Service
 public class RiskService {
 
+    /** Client REST dédié aux appels vers l’API RiskAssessment. */
     private final RestTemplate apiClient;
 
     public RiskService(@Qualifier("riskApiClient") RestTemplate apiClient) {
@@ -33,7 +37,11 @@ public class RiskService {
     }
 
     /**
-     * Construit les en-têtes HTTP avec JWT (Authorization + Cookie).
+     * Construit les en-têtes HTTP nécessaires, incluant le token JWT
+     * (Authorization Bearer + Cookie).
+     *
+     * @param request requête HTTP contenant le cookie JWT
+     * @return en-têtes complets pour l’appel REST
      */
     private HttpHeaders buildAuthHeaders(HttpServletRequest request) {
         HttpHeaders headers = new HttpHeaders();
@@ -49,7 +57,16 @@ public class RiskService {
     }
 
     /**
-     * Appel générique vers l'API risk-assessment.
+     * Appel REST générique vers le microservice risk-assessment.
+     *
+     * @param path chemin relatif (ex. <code>"/5"</code>)
+     * @param method méthode HTTP à utiliser
+     * @param body corps de la requête (ou {@code null})
+     * @param request requête HTTP contenant le JWT
+     * @param responseType type attendu en réponse
+     * @param <T> type générique retourné
+     * @return réponse désérialisée
+     * @throws IllegalStateException en cas d’erreur HTTP renvoyée par le backend
      */
     private <T> T callApi(String path,
                           HttpMethod method,
@@ -76,12 +93,13 @@ public class RiskService {
         }
     }
 
-    // ============================================================
-    //                    MÉTHODES PUBLIQUES
-    // ============================================================
-
     /**
-     * Récupère le niveau de risque de diabète pour un patient.
+     * Récupère le rapport d’évaluation du risque de diabète
+     * pour un patient donné.
+     *
+     * @param patientId identifiant du patient
+     * @param request requête HTTP contenant le JWT
+     * @return objet DTO contenant le niveau de risque et les informations patient
      */
     public RiskAssessmentResponse getRisk(Long patientId, HttpServletRequest request) {
         return callApi(
