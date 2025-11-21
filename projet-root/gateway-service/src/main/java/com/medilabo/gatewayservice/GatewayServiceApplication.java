@@ -4,39 +4,20 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Application : <strong>GatewayServiceApplication</strong>.
- * <p>
- * Cette classe constitue le point d’entrée du microservice
- * <em>gateway-service</em>, basé sur Spring Cloud Gateway.
- * </p>
+ * Point d'entrée du microservice <strong>gateway-service</strong>.
  *
- * <h2>Rôle</h2>
- * <ul>
- *   <li>Démarre le contexte Spring Boot pour le gateway.</li>
- *   <li>Charge automatiquement la configuration des routes définies
- *       dans le fichier {@code application.yml}.</li>
- *   <li>Agit comme proxy inverse centralisé entre le client et les
- *       différents microservices de l’application (auth, patient,
- *       notes, risk, UI).</li>
- * </ul>
- *
- * <h2>Remarque</h2>
- * <p>
- * Les routes ne sont pas définies dans le code Java : elles sont
- * entièrement gérées via la configuration YAML. Cela simplifie la
- * maintenance et évite l’utilisation des URI virtuels de type
- * {@code lb://} lorsqu’aucun service discovery (Eureka/Consul)
- * n’est disponible.
- * </p>
+ * <p>Cette application démarre le contexte Spring Boot et charge la configuration
+ * Spring Cloud Gateway définie dans le fichier {@code application.yml}. Le
+ * gateway agit comme un proxy centralisé entre le client et les différents
+ * microservices de l'écosystème (auth, patient, notes, risk, UI).</p>
  */
 @SpringBootApplication
 public class GatewayServiceApplication {
 
     /**
-     * Méthode principale qui lance le microservice Gateway.
+     * Lance l'application Gateway.
      *
-     * @param args arguments de la ligne de commande (non utilisés
-     *             dans ce projet, mais acceptés par convention)
+     * @param args arguments de ligne de commande
      */
     public static void main(String[] args) {
         SpringApplication.run(GatewayServiceApplication.class, args);

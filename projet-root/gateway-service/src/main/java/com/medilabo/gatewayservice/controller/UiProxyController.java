@@ -16,6 +16,13 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.Enumeration;
 
+/**
+ * Contrôleur proxy pour l'interface utilisateur.
+ *
+ * <p>Ce contrôleur intercepte les requêtes sous {@code /ui/**} et les
+ * redirige vers le microservice d'interface {@code patient-ui-service},
+ * en conservant la méthode HTTP, les en-têtes et le corps de la requête.</p>
+ */
 @Controller
 public class UiProxyController {
 
@@ -23,24 +30,42 @@ public class UiProxyController {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    /** Base URL de l’UI vue par le Gateway (local: http://localhost:8084, docker: http://patient-ui-service:8080) */
+    /**
+     * Base URL de l'UI telle qu'elle est vue par le Gateway.
+     *
+     * <p>Par défaut : {@code http://patient-ui-service:8080}. En local, cette
+     * valeur peut être surchargée (par exemple {@code http://localhost:8084}).</p>
+     */
     @Value("${ui.base-url:http://patient-ui-service:8080}")
     private String uiBaseUrl;
 
+    /**
+     * Proxy général pour toutes les requêtes dirigées vers {@code /ui/**}.
+     *
+     * <p>Cette méthode :</p>
+     * <ul>
+     *   <li>normalise la base de l'URL de l'UI,</li>
+     *   <li>reconstruit l'URL cible à partir du chemin et de la query string,</li>
+     *   <li>copie les en-têtes utiles,</li>
+     *   <li>transmet le corps de la requête pour les méthodes supportant un body,</li>
+     *   <li>retourne la réponse brute du backend (statut, en-têtes, corps).</li>
+     * </ul>
+     *
+     * @param request la requête HTTP entrante
+     * @return la réponse renvoyée par le microservice UI
+     * @throws IOException en cas d'erreur de lecture du corps de la requête
+     */
     @RequestMapping("/ui/**")
     public ResponseEntity<byte[]> proxyUi(HttpServletRequest request) throws IOException {
-        // Normalise la base (sans slash final)
         String base = uiBaseUrl.endsWith("/") ? uiBaseUrl.substring(0, uiBaseUrl.length() - 1) : uiBaseUrl;
 
-        // Construit le chemin cible
-        String incomingPath = request.getRequestURI();                // ex: /ui/patients
-        String query        = request.getQueryString();               // ex: page=1
-        String pathAfterUi  = incomingPath.substring("/ui".length()); // ex: /patients ou "" si /ui
+        String incomingPath = request.getRequestURI();
+        String query        = request.getQueryString();
+        String pathAfterUi  = incomingPath.substring("/ui".length());
         String normalized   = pathAfterUi.isEmpty() ? "/" : pathAfterUi;
 
         String target = base + normalized + (query != null ? "?" + query : "");
 
-        // Méthode HTTP (fallback GET)
         HttpMethod method;
         try {
             method = HttpMethod.valueOf(request.getMethod());
@@ -48,7 +73,6 @@ public class UiProxyController {
             method = HttpMethod.GET;
         }
 
-        // Copie des en-têtes utiles vers l’UI
         HttpHeaders headers = new HttpHeaders();
         copyHeaderIfPresent(request, headers, HttpHeaders.AUTHORIZATION);
         copyHeaderIfPresent(request, headers, HttpHeaders.COOKIE);
@@ -57,7 +81,6 @@ public class UiProxyController {
         copyHeaderIfPresent(request, headers, HttpHeaders.USER_AGENT);
         copyHeaderIfPresent(request, headers, HttpHeaders.CONTENT_TYPE);
 
-        // Corps uniquement pour méthodes avec body
         byte[] body = null;
         if (method == HttpMethod.POST || method == HttpMethod.PUT || method == HttpMethod.PATCH) {
             body = request.getInputStream().readAllBytes();
@@ -69,33 +92,36 @@ public class UiProxyController {
             log.debug("[UiProxy] {} -> {}", method, target);
             ResponseEntity<byte[]> resp = restTemplate.exchange(URI.create(target), method, entity, byte[].class);
 
-            // Renvoie tel quel (status + headers + body) + expose Location au navigateur
             HttpHeaders out = new HttpHeaders();
             out.putAll(resp.getHeaders());
             out.setAccessControlExposeHeaders(Collections.singletonList("Location"));
 
             return new ResponseEntity<>(resp.getBody(), out, resp.getStatusCode());
         } catch (HttpStatusCodeException e) {
-            // L’UI a répondu avec un statut d’erreur : on propage tel quel (très utile pour diagnostiquer)
             log.warn("[UiProxy] target={} -> {} {}", target, e.getStatusCode(), safe(e.getResponseBodyAsString()));
             HttpHeaders out = e.getResponseHeaders() != null ? e.getResponseHeaders() : new HttpHeaders();
             return ResponseEntity.status(e.getStatusCode())
                     .headers(out)
                     .body(e.getResponseBodyAsByteArray());
         } catch (ResourceAccessException e) {
-            // Connexion impossible (DNS, port, timeout…) -> 502
             log.error("[UiProxy] target={} connection error: {}", target, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(("Bad Gateway: cannot reach " + target).getBytes());
         } catch (Exception e) {
-            // Autre erreur inattendue -> 502 avec trace réduite
             log.error("[UiProxy] target={} unexpected error: {}", target, e.toString());
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(("Bad Gateway to " + target).getBytes());
         }
     }
 
-    /** Copie un en-tête HTTP du HttpServletRequest vers les HttpHeaders envoyés au backend. */
+    /**
+     * Copie un en-tête HTTP du {@link HttpServletRequest} vers les {@link HttpHeaders}
+     * envoyés au backend, si cet en-tête est présent.
+     *
+     * @param req   la requête HTTP d'origine
+     * @param dst   les en-têtes à compléter pour l'appel sortant
+     * @param name  le nom de l'en-tête à copier
+     */
     private static void copyHeaderIfPresent(HttpServletRequest req, HttpHeaders dst, String name) {
         Enumeration<String> values = req.getHeaders(name);
         if (values != null) {
@@ -105,8 +131,14 @@ public class UiProxyController {
         }
     }
 
+    /**
+     * Tronque une chaîne potentiellement longue pour un usage dans les logs.
+     *
+     * @param s la chaîne à sécuriser
+     * @return une chaîne non nulle, tronquée à 500 caractères maximum
+     */
     private static String safe(String s) {
         if (s == null) return "";
         return s.length() > 500 ? s.substring(0, 500) + "…" : s;
-        }
+    }
 }

@@ -14,8 +14,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Service responsable de la génération des JWT.
- * Compatible avec injection Spring et tests unitaires.
+ * Composant responsable de la génération des jetons JWT.
+ *
+ * <p>Ce service centralise la création des tokens signés et permet
+ * l'émission de jetons avec un rôle unique ou une liste de rôles.</p>
  */
 @Component
 public class JwtIssuer {
@@ -24,8 +26,11 @@ public class JwtIssuer {
     private final long ttlSeconds;
 
     /**
-     * Constructeur utilisé à la fois par Spring et par les tests.
-     * (Spring injecte automatiquement les valeurs via @Value.)
+     * Construit un émetteur de JWT en utilisant une clé secrète et une durée de vie
+     * configurées par les propriétés Spring.
+     *
+     * @param secret     clé secrète utilisée pour signer les JWT
+     * @param ttlSeconds durée de vie des jetons en secondes
      */
     public JwtIssuer(
             @Value("${security.jwt.secret:0123456789abcdefghijklmnopqrstuvwxyz012345}") String secret,
@@ -35,14 +40,22 @@ public class JwtIssuer {
     }
 
     /**
-     * Émet un token avec un seul rôle (utilisé dans le contrôleur).
+     * Émet un JWT pour un utilisateur possédant un seul rôle.
+     *
+     * @param username nom d'utilisateur pour lequel générer le jeton
+     * @param role     rôle attribué à l'utilisateur
+     * @return un jeton JWT signé
      */
     public String issue(String username, String role) {
         return issue(username, List.of(() -> "ROLE_" + role));
     }
 
     /**
-     * Émet un token avec une liste de rôles (utilisé dans les tests).
+     * Émet un JWT pour un utilisateur avec plusieurs rôles.
+     *
+     * @param username     nom d'utilisateur
+     * @param authorities  liste des autorités associées à l'utilisateur
+     * @return un token JWT signé contenant les rôles et les métadonnées standard
      */
     public String issue(String username, List<? extends GrantedAuthority> authorities) {
         Instant now = Instant.now();

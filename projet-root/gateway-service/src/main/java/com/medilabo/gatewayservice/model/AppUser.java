@@ -4,9 +4,15 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * Entité représentant un utilisateur dans l'application d'authentification.
- * Chaque utilisateur possède un nom d'utilisateur unique, un mot de passe chiffré,
- * et un rôle défini (ORGANISATEUR ou PRATICIEN).
+ * Entité représentant un utilisateur de l'application d'authentification.
+ *
+ * <p>Chaque utilisateur possède :</p>
+ * <ul>
+ *   <li>un identifiant unique,</li>
+ *   <li>un nom d'utilisateur unique,</li>
+ *   <li>un mot de passe chiffré,</li>
+ *   <li>un rôle parmi ceux définis dans {@link UserRole}.</li>
+ * </ul>
  */
 @Entity
 @Table(name = "users")
@@ -20,7 +26,7 @@ public class AppUser {
     private Long id;
 
     /**
-     * Nom d'utilisateur unique, obligatoire.
+     * Nom d'utilisateur unique et obligatoire.
      */
     @NotBlank
     @Column(unique = true, nullable = false)
@@ -34,16 +40,27 @@ public class AppUser {
     private String password;
 
     /**
-     * Rôle attribué à l'utilisateur (ORGANISATEUR ou PRATICIEN).
+     * Rôle attribué à l'utilisateur.
+     *
+     * <p>Valeurs possibles : {@link UserRole#ORGANISATEUR} ou {@link UserRole#PRATICIEN}.</p>
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
 
-    /** Constructeur vide requis par JPA */
+    /**
+     * Constructeur vide requis par JPA.
+     */
     public AppUser() {}
 
-    /** Constructeur complet */
+    /**
+     * Constructeur complet permettant d'initialiser toutes les propriétés.
+     *
+     * @param id        identifiant unique
+     * @param username  nom d'utilisateur
+     * @param password  mot de passe chiffré
+     * @param role      rôle attribué à l'utilisateur
+     */
     public AppUser(Long id, String username, String password, UserRole role) {
         this.id = id;
         this.username = username;
@@ -87,13 +104,11 @@ public class AppUser {
         this.role = role;
     }
 
-    // ----- Méthodes utilitaires -----
-
     /**
      * Retourne le rôle au format attendu par Spring Security,
      * par exemple {@code ROLE_ORGANISATEUR} ou {@code ROLE_PRATICIEN}.
      *
-     * @return le rôle au format Spring Security ou {@code null} si aucun rôle n'est défini
+     * @return le rôle préfixé par "ROLE_", ou {@code null} si aucun rôle n'est défini
      */
     public String getSpringRole() {
         return role != null ? role.asSpringRole() : null;

@@ -36,7 +36,7 @@ patients:
 
 notes:
   backend:
-    base-url: ${NOTE_BACKEND_BASE_URL:http://localhost:8082/api}
+    base-url: ${NOTE_BACKEND_BASE_URL:http://localhost:8082/api/notes}
 
 risk:
   backend:

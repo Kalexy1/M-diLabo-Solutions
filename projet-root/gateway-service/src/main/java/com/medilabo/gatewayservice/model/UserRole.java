@@ -1,16 +1,20 @@
 package com.medilabo.gatewayservice.model;
 
 /**
- * Enumération représentant les rôles disponibles dans le système.
+ * Enumération représentant les rôles disponibles dans l'application.
+ *
+ * <p>Chaque rôle peut être converti au format attendu par Spring Security
+ * grâce à la méthode {@link #asSpringRole()}.</p>
  */
 public enum UserRole {
     ORGANISATEUR,
     PRATICIEN;
 
     /**
-     * Retourne le rôle au format attendu par Spring Security.
+     * Retourne le rôle préfixé par {@code ROLE_}, conformément au format attendu
+     * par Spring Security.
      *
-     * @return par exemple "ROLE_ORGANISATEUR" ou "ROLE_PRATICIEN"
+     * @return une chaîne de type {@code ROLE_ORGANISATEUR} ou {@code ROLE_PRATICIEN}
      */
     public String asSpringRole() {
         return "ROLE_" + name();

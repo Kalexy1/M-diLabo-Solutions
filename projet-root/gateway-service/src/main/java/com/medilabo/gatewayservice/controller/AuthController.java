@@ -17,6 +17,14 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Duration;
 import java.util.Optional;
 
+/**
+ * Contrôleur gérant l'authentification des utilisateurs.
+ *
+ * <p>Ce contrôleur expose les endpoints de connexion, d'inscription et de
+ * déconnexion sous le préfixe {@code /auth}. Il s'appuie sur {@link UserService}
+ * pour la gestion des utilisateurs et sur {@link JwtIssuer} pour la génération
+ * des jetons JWT stockés dans un cookie HTTP.</p>
+ */
 @Controller
 @RequestMapping("/auth")
 public class AuthController {
@@ -30,6 +38,17 @@ public class AuthController {
     private final String sameSite;
     private final boolean cookieSecure;
 
+    /**
+     * Construit le contrôleur d'authentification.
+     *
+     * @param userService   service de gestion des utilisateurs
+     * @param jwtIssuer     composant responsable de l'émission des JWT
+     * @param passwordEncoder encodeur de mots de passe (utilisé dans la couche service)
+     * @param cookieName    nom du cookie JWT
+     * @param ttlSeconds    durée de vie du JWT en secondes
+     * @param sameSite      stratégie SameSite appliquée au cookie
+     * @param cookieSecure  indique si le cookie doit être marqué sécurisé
+     */
     @Autowired
     public AuthController(
             UserService userService,
@@ -49,14 +68,28 @@ public class AuthController {
         this.cookieSecure = cookieSecure;
     }
 
-    /* ========== LOGIN ========== */
-
+    /**
+     * Affiche la page de connexion.
+     *
+     * @param redirect URL vers laquelle rediriger après succès éventuel de la connexion
+     * @param model    modèle utilisé pour passer les attributs à la vue
+     * @return le nom de la vue de connexion
+     */
     @GetMapping("/login")
     public String loginPage(@RequestParam(value = "redirect", required = false) String redirect, Model model) {
         model.addAttribute("redirect", redirect);
         return "login";
     }
 
+    /**
+     * Traite la soumission du formulaire de connexion.
+     *
+     * @param username identifiant de l'utilisateur
+     * @param password mot de passe fourni
+     * @param redirect URL de redirection après authentification
+     * @param response réponse HTTP utilisée pour ajouter le cookie JWT
+     * @return une redirection vers la page cible ou vers la page de login en cas d'erreur
+     */
     @PostMapping("/login")
     public String login(@RequestParam String username,
                         @RequestParam String password,
@@ -77,8 +110,13 @@ public class AuthController {
         return "redirect:" + target;
     }
 
-    /* ========== REGISTER ========== */
-
+    /**
+     * Affiche le formulaire d'inscription.
+     *
+     * @param redirect URL vers laquelle rediriger après inscription
+     * @param model    modèle utilisé pour injecter l'utilisateur et les rôles disponibles
+     * @return le nom de la vue d'inscription
+     */
     @GetMapping("/register")
     public String registerPage(@RequestParam(value = "redirect", required = false) String redirect, Model model) {
         model.addAttribute("user", new AppUser());
@@ -87,6 +125,16 @@ public class AuthController {
         return "register";
     }
 
+    /**
+     * Traite la soumission du formulaire d'inscription.
+     *
+     * @param username identifiant souhaité
+     * @param password mot de passe en clair (l'encodage est géré dans {@link UserService})
+     * @param role     rôle attribué au nouvel utilisateur
+     * @param redirect URL de redirection après inscription
+     * @param response réponse HTTP utilisée pour ajouter le cookie JWT
+     * @return une redirection vers la page cible ou vers la page d'inscription en cas de conflit
+     */
     @PostMapping("/register")
     public String register(@RequestParam String username,
                            @RequestParam String password,
@@ -101,8 +149,9 @@ public class AuthController {
 
         AppUser newUser = new AppUser();
         newUser.setUsername(username);
-        newUser.setPassword(passwordEncoder.encode(password));
+        newUser.setPassword(password);
         newUser.setRole(role);
+
         userService.register(newUser);
 
         String token = jwtIssuer.issue(newUser.getUsername(), newUser.getRole().name());
@@ -112,16 +161,24 @@ public class AuthController {
         return "redirect:" + target;
     }
 
-    /* ========== LOGOUT ========== */
-
+    /**
+     * Déconnecte l'utilisateur courant en expirant le cookie JWT.
+     *
+     * @param response réponse HTTP utilisée pour écraser le cookie
+     * @return une redirection vers la page de login avec un indicateur de déconnexion
+     */
     @PostMapping("/logout")
     public String logout(HttpServletResponse response) {
         expireJwtCookie(response);
         return "redirect:/auth/login?logout";
     }
 
-    /* ========== UTILITAIRES COOKIES ========== */
-
+    /**
+     * Ajoute un cookie JWT à la réponse HTTP.
+     *
+     * @param response réponse HTTP à laquelle ajouter le cookie
+     * @param token    jeton JWT à stocker dans le cookie
+     */
     private void addJwtCookie(HttpServletResponse response, String token) {
         ResponseCookie rc = ResponseCookie.from(cookieName, token)
                 .httpOnly(true)
@@ -133,6 +190,11 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, rc.toString());
     }
 
+    /**
+     * Expire le cookie JWT en le remplaçant par un cookie vide.
+     *
+     * @param response réponse HTTP à laquelle ajouter le cookie expiré
+     */
     private void expireJwtCookie(HttpServletResponse response) {
         ResponseCookie rc = ResponseCookie.from(cookieName, "")
                 .httpOnly(true)

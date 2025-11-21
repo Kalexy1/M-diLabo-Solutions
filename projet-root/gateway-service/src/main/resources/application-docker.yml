@@ -5,11 +5,10 @@ server:
 spring:
   application:
     name: gateway-service
+
   main:
-    # ✅ Mode Servlet (pas WebFlux)
     web-application-type: servlet
 
-  # ✅ Datasource (conteneurisée)
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/medilabo_gateway?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${SPRING_DATASOURCE_USERNAME:root}
@@ -26,32 +25,35 @@ spring:
     prefix: classpath:/templates/
     suffix: .html
 
-# ✅ URL du UI vue par la Gateway dans le réseau Docker
+# ---- UI ----
 ui:
-  base-url: ${UI_BASE_URL:http://patient-ui-service:8080}
+  base-url: ${UI_BASE_URL:http://patient-ui-service:8084}
 
-# ✅ Base du patient-service vue par la Gateway dans le réseau Docker
+# ---- Patient Service ----
 patients:
   backend:
-    base-url: ${PATIENTS_BACKEND_BASE_URL:http://patient-service:8080/api}
+    base-url: ${PATIENTS_BACKEND_BASE_URL:http://patient-service:8081/api}
 
+# ---- Note Service ----
 notes:
   backend:
-    base-url: ${NOTES_BACKEND_BASE_URL:http://note-service:8080/api}
+    # ⚠️ IMPORTANT : doit pointer vers /api/notes
+    base-url: ${NOTES_BACKEND_BASE_URL:http://note-service:8082/api}
 
+# ---- Risk Assessment Service ----
 risk:
   backend:
-    base-url: ${RISK_BACKEND_BASE_URL:http://risk-assessment-service:8080/api}
+    base-url: ${RISK_BACKEND_BASE_URL:http://risk-assessment-service:8083/api}
 
-# ✅ JWT attendus par SecurityConfig/JwtDecoder (au NIVEAU RACINE)
+# ---- JWT Configuration ----
 security:
   jwt:
     secret: ${JWT_SECRET:0123456789abcdefghijklmnopqrstuvwxyz012345}
     ttl-seconds: 43200
     cookie:
       name: JWT_TOKEN
-      secure: false     # HTTP en dev Docker
-      samesite: None    # partage inter-ports
+      secure: false
+      samesite: Lax
 
 logging:
   level:

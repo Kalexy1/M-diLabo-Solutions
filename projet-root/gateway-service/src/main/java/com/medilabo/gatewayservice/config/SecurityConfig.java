@@ -21,48 +21,66 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+/**
+ * Configuration de la sécurité du microservice Gateway.
+ *
+ * <p>Cette classe définit les règles d'accès HTTP, la politique CORS, la
+ * gestion des sessions et l'encodage JWT utilisé pour décoder manuellement
+ * les jetons si nécessaire.</p>
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    /**
+     * Configure la chaîne de filtres Spring Security.
+     *
+     * <p>Cette configuration désactive CSRF, active CORS, utilise une
+     * gestion de session stateless et définit les règles d'accès aux
+     * différents endpoints du gateway. Le Resource Server JWT est
+     * explicitement désactivé.</p>
+     *
+     * @param http l'objet {@link HttpSecurity} à configurer
+     * @return la configuration de sécurité sous forme de {@link SecurityFilterChain}
+     * @throws Exception en cas d'erreur de configuration
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // Pas de session serveur, on travaille avec un cookie JWT
             .csrf(csrf -> csrf.disable())
             .cors(cors -> {})
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-            // Règles d’accès
             .authorizeHttpRequests(auth -> auth
-                // Public : login/register + fichiers statiques
                 .requestMatchers("/auth/**", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
-
-                // UI : laissé public côté Spring (protégé via CookieToAuthHeaderFilter)
                 .requestMatchers("/ui/**").permitAll()
-
-                // API : pour l’instant accessible sans Resource Server
                 .requestMatchers("/api/**").permitAll()
-
-                // Tout le reste est public
                 .anyRequest().permitAll()
             )
-
-            // ❌ IMPORTANT : désactivation du Resource Server JWT
-            // (c’est lui qui envoyait les 401 automatiquement)
             .oauth2ResourceServer(oauth2 -> oauth2.disable());
 
         return http.build();
     }
 
-    /** Bean utilisé uniquement si tu veux décoder un JWT manuellement (non utilisé par Spring Security ici) */
+    /**
+     * Crée un décodeur JWT basé sur une clé secrète HMAC.
+     *
+     * <p>Ce bean est destiné à un usage manuel et n'est pas utilisé par
+     * Spring Security dans cette configuration.</p>
+     *
+     * @param secret la clé secrète définie dans la configuration de l'application
+     * @return une instance de {@link JwtDecoder}
+     */
     @Bean
     public JwtDecoder jwtDecoder(@Value("${security.jwt.secret}") String secret) {
         SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
     }
 
-    /** CORS permissif pour dev */
+    /**
+     * Configure une politique CORS permissive pour l'environnement de développement.
+     *
+     * @return une instance de {@link CorsConfigurationSource} appliquée à toutes les routes
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var config = new CorsConfiguration();
